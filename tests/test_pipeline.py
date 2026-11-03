@@ -214,6 +214,18 @@ class Pipeline(unittest.TestCase):
         self.assertIn("RING", out)
         self.assertEqual(self.state_json("risk.json")["orders"][0]["verdict"], "PASS")
 
+    def test_daily_bars_patched_from_intraday(self):
+        import data
+        os.environ["DALAL_FIXTURES"] = str(self.fx)
+        try:
+            raw = data.chart("FLATCO", "1d", "1y")["bars"]
+            patched = data.daily("FLATCO", "1y")
+        finally:
+            os.environ.pop("DALAL_FIXTURES")
+        self.assertEqual(raw[-1]["dt"].date(), dt.date(2026, 10, 30))      # Yahoo lags a session
+        self.assertEqual(patched[-1]["dt"].date(), dt.date(2026, 11, 2))   # rebuilt from 5-minute bars
+        self.assertTrue(patched[-1]["patched"])
+
     def test_levels_chart(self):
         self.run_tool("dalal-scanner/scan.py", "universe")
         out = self.run_tool("dalal-levels/levels.py", "FLATCO", when="2026-11-02T15:30").stdout

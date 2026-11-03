@@ -50,8 +50,9 @@ def bars(interval, rng):
 
 
 def daily_tail():
-    b = data.chart(SYM, "1d", "1mo")["bars"][-3:]
-    return "; ".join(f"{x['dt']:%a %d %b} close {x['c']:.2f} vol {x['v']:,}" for x in b)
+    b = data.daily(SYM, "1mo")[-3:]
+    return "; ".join(f"{x['dt']:%a %d %b} close {x['c']:.2f}" + (" (rebuilt from 5-min bars)" if x.get("patched") else "")
+                     for x in b)
 
 
 def pit():
@@ -87,12 +88,13 @@ check("NSE security list (bands)", lambda: csv_rows("sec_list.csv"))
 check("NSE bulk deals file", lambda: csv_rows("bulk.csv"))
 check("Yahoo 5-minute bars (60d)", lambda: bars("5m", "60d"))
 check("Yahoo 1-minute bars (1d)", lambda: bars("1m", "1d"))
-check("Yahoo daily bars, last 3", daily_tail)
+check("Daily bars, last 3", daily_tail)
 check("Yahoo news", lambda: f"{len(data.yahoo_news(SYM))} items")
 check("Google News India", lambda: f"{len(data.google_news(SYM + ' share', 1))} items")
 check("NSE announcements", lambda: nse_list(f"/api/corporate-announcements?index=equities&symbol={urllib.parse.quote(SYM)}"))
 check("NSE board meetings", lambda: nse_list(f"/api/corporate-board-meetings?index=equities&symbol={urllib.parse.quote(SYM)}"))
 check("NSE insider (PIT), 7 days", pit)
+check("NSE insider (PIT), undated", lambda: nse_list("/api/corporates-pit?index=equities"))
 check("Reddit JSON", lambda: reddit("json"))
 check("Reddit RSS", lambda: reddit("rss"))
 for s in ("TATAMOTORS", "TMPV"):

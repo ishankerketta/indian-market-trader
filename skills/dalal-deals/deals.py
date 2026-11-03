@@ -83,10 +83,28 @@ def cmd_insider(args):
     frm = (t - dt.timedelta(days=args.days)).strftime("%d-%m-%Y")
     to = t.strftime("%d-%m-%Y")
     j = nse_json(f"/api/corporates-pit?index=equities&from_date={frm}&to_date={to}", "nse_pit.json")
-    if isinstance(j, dict):
-        rows = j.get("data") or j.get("Data") or j.get("rows") or []
-    else:
-        rows = j or []
+    def rows_of(x):
+        if isinstance(x, dict):
+            return x.get("data") or x.get("Data") or x.get("rows") or []
+        return x or []
+    rows = rows_of(j)
+    if not rows:
+        # Seen live: the dated query can come back empty; the undated one returns recent filings
+        try:
+            j = nse_json("/api/corporates-pit?index=equities", "nse_pit_recent.json")
+            lo = t.date() - dt.timedelta(days=args.days)
+            def filed(r):
+                for k in ("intimDt", "date", "acqtoDt"):
+                    v = (r.get(k) or "")[:11]
+                    for fmt in ("%d-%b-%Y", "%d-%m-%Y"):
+                        try:
+                            return dt.datetime.strptime(v, fmt).date()
+                        except ValueError:
+                            pass
+                return None
+            rows = [r for r in rows_of(j) if (filed(r) or t.date()) >= lo]
+        except DataError:
+            pass
     if not rows:
         shape = f"keys: {', '.join(list(j)[:8])}" if isinstance(j, dict) else f"type {type(j).__name__}"
         print(f"NSE returned no insider rows for {frm} to {to} ({shape}). That is unusual for a working day: "

@@ -165,6 +165,28 @@ def parse_chart(j):
             "symbol": meta.get("symbol")}
 
 
+def daily(symbol, range_="1y"):
+    """Daily bars with any session Yahoo's daily series is missing rebuilt from 5-minute bars.
+
+    Yahoo's NSE daily bars can lag a session (seen live: daily stopped at Friday while
+    5-minute bars had Monday's +11.6% day). Patched bars carry "patched": True.
+    """
+    bars = chart(symbol, "1d", range_)["bars"]
+    last = bars[-1]["dt"].date() if bars else None
+    try:
+        intraday = chart(symbol, "5m", "5d")["bars"]
+    except DataError:
+        return bars
+    for d, day in by_day(intraday).items():
+        day = session_bars(day)
+        if not day or (last and d <= last):
+            continue
+        bars.append({"t": day[0]["t"], "dt": day[0]["dt"].replace(hour=9, minute=15), "o": day[0]["o"],
+                     "h": max(b["h"] for b in day), "l": min(b["l"] for b in day), "c": day[-1]["c"],
+                     "v": sum(b["v"] for b in day), "patched": True})
+    return bars
+
+
 def by_day(bars):
     days = OrderedDict()
     for b in bars:

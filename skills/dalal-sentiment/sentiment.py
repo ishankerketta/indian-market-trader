@@ -19,7 +19,7 @@ import sys
 sys.path.insert(0, str(pathlib.Path(__file__).resolve().parent.parent / "_dalal"))
 
 from core import die, load_config, now, read_state, write_state, norm_symbol  # noqa: E402
-from data import DataError, chart, google_news, reddit_search, yahoo_news  # noqa: E402
+from data import DataError, daily, google_news, reddit_search, yahoo_news  # noqa: E402
 from text import label, mentions, pump_flags, score, stock_aliases  # noqa: E402
 from universe import names  # noqa: E402
 
@@ -90,7 +90,7 @@ def one(sym, nm, days, cfg, t):
     pump_hits = sum(len(p["pump"]) for p in social)
     turnover_cr = None
     try:
-        d = chart(sym, "1d", "1mo")["bars"]
+        d = daily(sym, "1mo")
         if len(d) >= 5:
             turnover_cr = sum(b["c"] * b["v"] for b in d[-20:]) / len(d[-20:]) / 1e7
     except DataError:

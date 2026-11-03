@@ -109,6 +109,8 @@ def make(out):
                           round(c, 2), int(2.5e6 * (0.6 + rng2.random()))))
             p = c
         drows = early + daily
+        if sym == "FLATCO":
+            drows = drows[:-1]   # simulate Yahoo's daily series lagging the latest session
         Path(out, f"chart_{sym}_1d.json").write_text(json.dumps(yahoo(sym + ".NS", drows, drows[-2][4])))
         # 1m bars for the test day: expand each 5m bar into 5 one-minute bars
         today = [r for r in rows if dt.datetime.fromtimestamp(r[0], IST).date() == TEST_DAY]

@@ -17,7 +17,7 @@ import sys
 sys.path.insert(0, str(pathlib.Path(__file__).resolve().parent.parent / "_dalal"))
 
 from core import IST, die, now, read_state, write_state, norm_symbol  # noqa: E402
-from data import DataError, chart, google_news, nse_json, yahoo_news  # noqa: E402
+from data import DataError, daily, google_news, nse_json, yahoo_news  # noqa: E402
 from text import label, mentions, results_upcoming, score, stock_aliases, tag  # noqa: E402
 from universe import names  # noqa: E402
 
@@ -108,7 +108,7 @@ def one(sym, hours, t, nm):
             results_soon, note = True, f"headline suggests results are due: \"{hit['title'][:80]}\""
     move, move_day = None, None
     try:
-        d = chart(sym, "1d", "5d")["bars"]
+        d = daily(sym, "5d")
         if len(d) >= 2:
             move = round((d[-1]["c"] / d[-2]["c"] - 1) * 100, 2)
             move_day = d[-1]["dt"].date()

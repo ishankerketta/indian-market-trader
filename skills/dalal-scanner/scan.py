@@ -14,7 +14,7 @@ from concurrent.futures import ThreadPoolExecutor, as_completed
 sys.path.insert(0, str(pathlib.Path(__file__).resolve().parent.parent / "_dalal"))
 
 from core import at_today, die, load_config, now, read_state, write_state, norm_symbol  # noqa: E402
-from data import DataError, by_day, chart, session_bars  # noqa: E402
+from data import DataError, by_day, chart, daily, session_bars  # noqa: E402
 from indicators import orb_trigger, rsi, bar_minutes, completed  # noqa: E402
 from universe import build_universe, load_universe  # noqa: E402
 
@@ -60,7 +60,7 @@ def report_errors(errs, verbose):
 # ---------------------------------------------------------------- daily
 
 def daily_one(sym, cfg):
-    bars = chart(sym, "1d", "1y")["bars"]
+    bars = daily(sym, "1y")
     if len(bars) < 30:
         return None
     closes = [b["c"] for b in bars]

@@ -17,7 +17,7 @@ Writes `dalal/levels.json` (one entry per symbol) and `dalal/levels_SYMBOL.html`
 - **Range**: the highest high and lowest low of the last 20 sessions, up to the latest bar.
 - **Major (max 3)**: swing highs and lows on 15-minute bars (the extreme of an hour either side) are grouped when they fall within a tolerance band (about 0.12% of price or a third of a typical bar, whichever is wider). A line needs at least 3 touches. Lines that held across several sessions, or acted as both support and resistance, rank higher.
 - **3-day (3-5)**: the same on 5-minute bars of the last 3 sessions, needing 2 touches.
-- **Kept sparse on purpose**: each line removes its touch points, and no line may sit within two bands, or within 4% of the chart's height, of another. If fewer than 3 short-term levels qualify, it shows fewer rather than padding with weak ones.
+- **Kept sparse on purpose**: each line removes its touch points, and no line may sit within two bands of another, or within 6% (major) / 9% (3-day) of the chart's height. If fewer than 3 short-term levels qualify, it shows fewer rather than padding with weak ones.
 
 ## Presenting it
 

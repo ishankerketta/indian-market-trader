@@ -14,7 +14,7 @@ import sys
 sys.path.insert(0, str(pathlib.Path(__file__).resolve().parent.parent / "_dalal"))
 
 from core import at_today, die, fmt_inr, load_config, now, read_state, write_state  # noqa: E402
-from data import DataError, chart  # noqa: E402
+from data import DataError, daily  # noqa: E402
 from indicators import band_limits  # noqa: E402
 from sr import all_lines  # noqa: E402
 from universe import load_bands  # noqa: E402
@@ -136,8 +136,8 @@ def main():
     for o in targets:
         prev_close = None
         try:
-            daily = chart(o["symbol"], "1d", "1mo")["bars"]
-            past = [b for b in daily if b["dt"].date() < t.date()]
+            dbars = daily(o["symbol"], "1mo")
+            past = [b for b in dbars if b["dt"].date() < t.date()]
             prev_close = past[-1]["c"] if past else None
         except DataError:
             pass

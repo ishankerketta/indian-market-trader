@@ -63,10 +63,10 @@ def compute(symbol, weeks=4, n_major=3, n_short=5, short_days=3):
     lo = min(b15 + b5, key=lambda b: b["l"])
     range_high = {"price": round(hi["h"], 2), "when": hi["dt"].isoformat(timespec="minutes")}
     range_low = {"price": round(lo["l"], 2), "when": lo["dt"].isoformat(timespec="minutes")}
-    # Lines must be at least 4% of the chart's height apart (and two bands), so they never bunch up
+    # Lines must be at least 6% (major) / 9% (3-day) of the chart's height apart (and two bands), so they never bunch up
     span = hi["h"] - lo["l"]
     major = pick_levels(swing_points(b15, 4), tol, n_major, 3, avoid=[hi["h"], lo["l"]],
-                        gap=max(2 * tol, 0.04 * span))
+                        gap=max(2 * tol, 0.06 * span))
     short = []
     tol_s = tol
     if b5:
@@ -74,7 +74,7 @@ def compute(symbol, weeks=4, n_major=3, n_short=5, short_days=3):
         span3 = max(b["h"] for b in b5) - min(b["l"] for b in b5)
         short = pick_levels(swing_points(b5, 3), tol_s, n_short, 2,
                             avoid=[hi["h"], lo["l"]] + [m["price"] for m in major],
-                            gap=max(2 * tol_s, 1.5 * tol, 0.06 * span3))
+                            gap=max(2 * tol_s, 1.5 * tol, 0.09 * span3))
     lv = {"symbol": symbol, "time": now().isoformat(timespec="minutes"), "price": round(price, 2),
           "tolerance": round(tol, 2), "short_tolerance": round(tol_s, 2), "sessions": len(long_s),
           "short_sessions": len(short_s),
@@ -192,8 +192,8 @@ def render(lv, long_s, short_s):
     if short_s:
         lo = min(b["l"] for s in short_s for b in s)
         hi = max(b["h"] for s in short_s for b in s)
-        pad = (hi - lo) * 0.15
-        near = [dict(m, cls=m["cls"] + " faint") for m in maj + rng if lo - pad <= m["price"] <= hi + pad]
+        # Only majors inside this panel's own price range, so it doesn't stretch to show far lines
+        near = [dict(m, cls=m["cls"] + " faint") for m in maj + rng if lo <= m["price"] <= hi]
         st = [dict(s, x0frac=0) for s in st_long]
         p2 = panel(short_s, near + st + [now_line],
                    f"{sym} - last {lv['short_sessions']} sessions (5-minute candles): 3-day levels")
