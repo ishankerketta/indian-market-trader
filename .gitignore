@@ -1,0 +1,5 @@
+dalal/
+__pycache__/
+*.pyc
+tests/fixtures/generated/
+.env

@@ -1,0 +1,10 @@
+{
+  "name": "indian-market-trader",
+  "version": "0.1.0",
+  "description": "12 Claude skills for intraday trading on NSE India: scan charts, read news and social sentiment, time entries and exits, replay the odds after charges, size, risk-check and paper trade - never an order without your yes.",
+  "author": {
+    "name": "Ishan Savio Kerketta"
+  },
+  "license": "MIT",
+  "keywords": ["nse", "india", "day-trading", "intraday", "backtesting", "sentiment", "claude-skills"]
+}

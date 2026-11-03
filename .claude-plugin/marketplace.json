@@ -1,0 +1,13 @@
+{
+  "name": "indian-market-trader",
+  "owner": {
+    "name": "Ishan Savio Kerketta"
+  },
+  "plugins": [
+    {
+      "name": "indian-market-trader",
+      "source": "./",
+      "description": "Intraday trading skills for NSE India: scanner, news, sentiment, entry, exit, time machine, charges, budget, risk, paper broker, alerts, bulk/block/insider deals."
+    }
+  ]
+}
