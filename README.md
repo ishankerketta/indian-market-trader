@@ -46,9 +46,11 @@ Pick one:
 | Where | How easy | What works |
 |---|---|---|
 | **A. Claude Code** (recommended) | Easy, a few commands | Everything, including your broker |
-| **A2. Claude desktop app** | Easiest, a few clicks | Same plugin, no commands |
-| **B. Claude app** (claude.ai or desktop) | Easiest, no commands | Analysis and paper trading. No broker connection |
+| **A2. Claude desktop app, Code tab** | Easiest, a few clicks | Same plugin, no commands. Runs on your own computer |
+| **B. Claude chat** (claude.ai, or the Chat tab of the desktop app) | Easy, but needs one setting | Runs in Claude's cloud, which blocks the market data unless you allow it. No broker connection |
 | **C. ChatGPT or Codex** | Easy | Should work, not tested yet |
+
+> **Why it matters where you run it.** The skills download live prices from Yahoo Finance and NSE. Options A and A2 run on **your own computer**, so they just work. Option B runs in Claude's **cloud**, which blocks those sites unless you allow them (see B below), and NSE may still refuse some requests from the cloud. If you see "can't reach the data", switch to A or A2.
 
 #### A. Claude Code (recommended)
 
@@ -71,24 +73,27 @@ Claude Code needs a paid Claude plan (Pro, Max, Team or Enterprise).
    ```
 4. **Done.** Ask your first question (see Step 3).
 
-#### A2. Claude desktop app (Mac or Windows): no commands needed
+#### A2. Claude desktop app, Code tab (Mac or Windows): no commands needed
 
 1. Open **Settings → Customize → Plugins**.
 2. Click **+ Add** (top right) → **Add marketplace**.
 3. Paste `ishankerketta/indian-market-trader` and confirm.
 4. The plugin **Indian market trader** appears. Add it. It says "installed and ready to use".
-5. Open a **New** session and ask: "How's the market looking today?"
+5. Click the **Code** tab (the `</>` button at the top left, not the Chat tab). Start a new session on **This computer** and choose any folder.
+6. Ask: "How's the market looking today?" (or type `/india-pulse`).
 
-Tested on the Mac desktop app.
+Checked on a Mac: the market pulse ran live from the Code tab. In the Chat tab, the data was blocked.
 
-#### B. Claude app (claude.ai, or the desktop app)
+#### B. Claude chat (claude.ai, or the Chat tab of the desktop app)
+
+This runs in Claude's cloud. Use it only if you cannot use A or A2. It is not fully tested.
 
 1. **Download the skills:** go to the [latest release](https://github.com/ishankerketta/indian-market-trader/releases/latest) and download the ZIP files. Start with `india-pulse.zip`, `india-scanner.zip`, `india-levels.zip` and `india-charges.zip`, and add more later.
 2. **Allow the data:** in Claude, go to **Settings → Capabilities**. Turn on **code execution**, and allow network access to these sites (or to all sites):
    `query1.finance.yahoo.com`, `www.nseindia.com`, `nsearchives.nseindia.com`, `archives.nseindia.com`, `niftyindices.com`, `news.google.com`, `www.reddit.com`
 3. **Upload:** go to **Customize → Skills → + → Upload a skill**, and pick a ZIP (don't unzip it). Repeat for each one.
 
-Broker connections need your own computer, so they don't work in the app. Use option A for those.
+Broker connections need your own computer, so they don't work here. Use option A for those.
 
 #### C. ChatGPT or Codex (not tested yet)
 
