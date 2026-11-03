@@ -35,7 +35,7 @@ NEEDS = {
 
 
 def ask(prompt, secret=False, default=None):
-    q = f"{prompt}{f' [{default}]' if default else ''}: "
+    q = f"{prompt}{f' [{default}]' if default else ''}{' (hidden: nothing shows as you type or paste, then press Enter)' if secret else ''}: "
     v = getpass.getpass(q) if secret else input(q)
     v = v.strip() or (default or "")
     if not v:
@@ -51,7 +51,8 @@ def login(name):
     if key not in B.ADAPTERS:
         die(f"unknown broker {name!r}; choose from {', '.join(B.ADAPTERS)}")
     print(f"Logging in to {key}. You need: {NEEDS[key]}.")
-    print("Secrets are read with hidden input and are not saved; only today's session token is.\n")
+    print("Secrets are read with hidden input and are not saved; only today's session token is.")
+    print("Run this command on its own: anything pasted after it would be read as your answers.\n")
     try:
         if key == "angelone":
             api_key = ask("SmartAPI API key", secret=True)
@@ -109,6 +110,9 @@ def login(name):
             B.save_session(key, {"host": host, "api_key": api_key})
     except B.BrokerError as e:
         die(str(e))
+    except (KeyboardInterrupt, EOFError):
+        print()
+        die("login cancelled; nothing was saved")
     print(f"\nSaved a {key} session for today in trader/brokers/{key}.json (readable only by you).")
     print("Orders still need: \"paper\": false in trader/config.json, a risk PASS, and your yes for each ticket.")
 
