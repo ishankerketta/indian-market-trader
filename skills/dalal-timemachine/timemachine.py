@@ -84,21 +84,44 @@ def remaining_slots(start_after, flat_by, minutes):
     return slots
 
 
-def simulate(plan, pools, slots, sims, seed):
+def vol_ratio(today_bars, pools, lo=0.5, hi=4.0):
+    """How fast today is moving vs normal: today's average candle range so far divided by the
+    historical average range for the same time slots. Clamped to [0.5, 4]. 1.0 if too early to tell.
+
+    Seen live: on RELIANCE's results day, unscaled replays from normal sessions gave a 2R target
+    0% odds; the stock closed beyond it.
+    """
+    pairs = []
+    for b in today_bars:
+        hist = pools.get(slot_key(b))
+        if not hist or b["o"] <= 0:
+            continue
+        normal = statistics.fmean(hr - lr for _, hr, lr, _ in hist)
+        if normal > 0:
+            pairs.append(((b["h"] - b["l"]) / b["o"], normal))
+    if len(pairs) < 3:
+        return 1.0
+    r = sum(p[0] for p in pairs) / sum(p[1] for p in pairs)
+    return max(lo, min(hi, r))
+
+
+def simulate(plan, pools, slots, sims, seed, scale=1.0):
     rng = random.Random(seed)
     side, entry, stop, target = plan["side"], plan["entry"], plan["stop"], plan["target"]
     usable = [s for s in slots if pools.get(s)]
     counts = {"target": 0, "stop": 0, "flat": 0}
     pnls = []
     long_ = side == "long"
+    k = scale
     for _ in range(sims):
         def gen():
             px = entry
             for s in usable:
                 g, hr, lr, cr = rng.choice(pools[s])
-                o = px * g
-                yield o, o * hr, o * lr, o * cr
-                px = o * cr
+                # Stretch each candle's moves by today's volatility ratio
+                o = px * (1 + (g - 1) * k)
+                yield o, o * (1 + (hr - 1) * k), o * (1 + (lr - 1) * k), o * (1 + (cr - 1) * k)
+                px = o * (1 + (cr - 1) * k)
         outcome, exit_px = walk(gen(), side, entry, stop, target)
         counts[outcome] += 1
         pnls.append((exit_px - entry) if long_ else (entry - exit_px))
@@ -154,6 +177,7 @@ def main():
     ap.add_argument("--sims", type=int, default=10000)
     ap.add_argument("--seed", type=int, default=42)
     ap.add_argument("--lookback", type=int, default=59)
+    ap.add_argument("--no-vol-scale", action="store_true", help="replay normal-day candles unscaled")
     ap.add_argument("--write", action="store_true")
     args = ap.parse_args()
     cfg = load_config()
@@ -176,7 +200,13 @@ def main():
     if not slots:
         die("no time left before flat-by for the trade to play out")
     pools = build_pools(hist)
-    counts, pnls, used = simulate(plan, pools, slots, args.sims, args.seed)
+    today_done = [b for b in session_bars(days.get(today, [])) if b["dt"] + dt.timedelta(minutes=minutes) <= start]
+    vr = 1.0 if args.no_vol_scale else vol_ratio(today_done, pools)
+    counts, pnls, used = simulate(plan, pools, slots, args.sims, args.seed, vr)
+    plain = None
+    if abs(vr - 1) >= 0.25:
+        pc, _, _ = simulate(plan, pools, slots, min(args.sims, 3000), args.seed, 1.0)
+        plain = {k: round(100 * v / min(args.sims, 3000), 1) for k, v in pc.items()}
     risk = plan["risk_per_share"]
     est_qty = max(1, math.floor(cfg["max_loss_per_trade"] / risk)) if risk else 1
     cps = per_share_cost(plan["entry"], est_qty, cfg["broker_profile"], cfg["rates"])
@@ -190,10 +220,14 @@ def main():
     h_net_r = [(r["pnl_ps"] - cps) / r["risk_ps"] for r in hist_rows if r["risk_ps"]]
     h_exp_r = statistics.fmean(h_net_r) if h_net_r else None
     v = verdict(exp_r, len(hist_rows), h_exp_r)
+    if vr >= 2:
+        v += (f"; today is moving at {vr:.1f}x its normal pace (an event day?), so 60 ordinary "
+              "sessions are a weak guide and both targets and stops come faster")
     out = {
         "symbol": plan["symbol"], "side": plan["side"], "entry": plan["entry"], "stop": plan["stop"],
         "target": plan["target"], "flat_by": plan.get("flat_by"), "sims": args.sims, "seed": args.seed,
-        "sessions": len(hist), "slots": used, "cost_per_share": round(cps, 3),
+        "sessions": len(hist), "slots": used, "cost_per_share": round(cps, 3), "vol_ratio": round(vr, 2),
+        "sim_pct_unscaled": plain,
         "sim_pct": pct, "sim_exp_per_share_net": round(exp_ps, 3),
         "sim_exp_R_net": round(exp_r, 3) if exp_r is not None else None,
         "sim_p5_p95_per_share": [round(q[0], 2), round(q[-1], 2)],
@@ -204,14 +238,20 @@ def main():
     print(f"Time Machine: {plan['symbol']} {plan['side']} from {plan['entry']} "
           f"(stop {plan['stop']}, target {plan['target']}, flat by {plan.get('flat_by')})")
     print(f"  {args.sims:,} replays of the remaining {used} candles, drawn from {len(hist)} past sessions (seed {args.seed}):")
+    if vr != 1.0:
+        print(f"    today is moving at {vr:.2f}x its normal pace for this time of day; replayed candles are scaled to match")
     print(f"    target first {pct['target']}%, stop first {pct['stop']}%, still open at flat-by {pct['flat']}%")
+    if plain:
+        print(f"    (unscaled normal-day candles would say: target {plain['target']}%, stop {plain['stop']}%, "
+              f"open {plain['flat']}%)")
     print(f"    average result {exp_ps:+.2f}/share after ~{cps:.2f}/share charges = {exp_r:+.2f}R")
     print(f"    90% of replays land between {q[0]:+.2f} and {q[-1]:+.2f} per share")
     print(f"  History: the same rule fired on {len(hist_rows)} of {len(hist)} past sessions: "
           f"{h_counts['target']} target, {h_counts['stop']} stop, {h_counts['flat']} neither"
           + (f"; average {h_exp_r:+.2f}R net" if h_exp_r is not None else ""))
     print(f"  Verdict: {v}.")
-    print("  A simulation built from the last 60 days, not a prediction: results, halts and news can do what those days never did.")
+    print("  A simulation built from the last 60 days, scaled to today's pace, not a prediction: results, halts and "
+          "news can do what those days never did.")
     if args.write:
         write_state("sim.json", out)
         print("Saved dalal/sim.json")

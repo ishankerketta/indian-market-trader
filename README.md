@@ -42,7 +42,7 @@ Needs Python 3.8+. Nothing to pip install. The first time you size a trade, Clau
 | `/dalal-levels` | Levels | The 4-week high and low, up to 3 major support/resistance lines and 3-5 three-day lines on a clean chart of any stock or index |
 | `/dalal-entry` | Entry Timer | Watches the setup bar by bar: waiting, triggered, or expired (and refuses to chase) |
 | `/dalal-exit` | Exit Planner | Stop, target and a 15:10 flat-by before you enter, rounded to NSE ticks, reward:risk after charges |
-| `/dalal-timemachine` | Time Machine | 10,000 replays of the rest of the session from the stock's own candles, plus the same rule on ~60 past sessions, net of charges |
+| `/dalal-timemachine` | Time Machine | 10,000 replays of the rest of the session from the stock's own candles, scaled to today's pace, plus the same rule on ~60 past sessions, net of charges |
 | `/dalal-costs` | Charges Calculator | STT, NSE fees, SEBI fee, stamp duty, GST and brokerage, net P&L and breakeven |
 | `/dalal-budget` | Budget Manager | Sizes the position so the loss at the stop, charges included, stays within your limit |
 | `/dalal-risk` | Risk Manager | Daily loss limit, trades per day, entry window, T2T series, circuit bands, results days, pump risk: PASS or BLOCK |
@@ -67,7 +67,9 @@ A walkthrough on the **synthetic test data** in `tests/` (made-up company TESTCO
 3. **`/dalal-sentiment`**: Reddit mentions at 16x their normal rate, full of "10x multibagger" and "Telegram group" talk. Pump risk: **high**.
 4. **`/dalal-entry`**: triggered, last price 1718.72, still inside the 1% chase limit. (At 12:30 the same check says expired: it ran away, do not chase.)
 5. **`/dalal-exit`**: entry 1718.72, stop at the range low 1704.70, target 2.5R 1753.70, flat by 15:10. Reward:risk 2.5 gross, 2.09 after charges.
-6. **`/dalal-timemachine`** (seed 42, so anyone can repeat it): in 10,000 replays the target came first 28.1% of the time, the stop 23.5%, and 48.3% were still open at flat-by. On the 59 past sessions the same rule fired 54 times: 19 targets, 26 stops, 9 neither.
+6. **`/dalal-timemachine`** (seed 42, so anyone can repeat it): TESTCO had been moving at 0.68x its normal pace that morning, so the replayed candles were scaled down to match. In 10,000 replays the target came first 7.5% of the time, the stop 11.1%, and 81.4% were still open at flat-by. On the 59 past sessions the same rule fired 54 times: 19 targets, 26 stops, 9 neither.
+
+   Why the scaling matters, from a real replay: on RELIANCE's results day (2 Nov 2026), unscaled replays drawn from 59 normal sessions gave a 2R target at 1289.30 a 0% chance. The stock closed at 1300. The Time Machine now measures today's pace and stretches or shrinks the replays to match.
 7. **`/dalal-budget`** with ₹1,00,000 capital and ₹500 max loss: 28 shares, loss at the stop about ₹493 including charges.
 8. **`/dalal-risk`**: PASS, with a loud warning about the pump risk.
 9. **`/dalal-broker`**: the ticket in plain words; you type yes; the paper ledger fills 28 at the 1720.50 limit and exits at the target at 12:55, net ₹877.80 after ₹51.80 of charges.
@@ -118,7 +120,7 @@ Replay any moment with `DALAL_NOW=2026-11-02T09:41`. Point the tools at saved da
 
 **SEBI's retail algo rules.** Since 1 April 2026, orders sent through a broker API must come through the broker's compliant setup (registered static IP, exchange-tagged orders). One human-approved order at a time is far below the 10-orders-a-second line where formal algo registration starts, but your broker's API rules still apply.
 
-**The Time Machine is a simulation, not a prediction.** It is built from the last ~60 sessions of 5-minute bars. Results, circuits, halts, block deals and headlines can do what those days never did.
+**The Time Machine is a simulation, not a prediction.** It is built from the last ~60 sessions of 5-minute bars, scaled to how fast the stock is moving today. Results, circuits, halts, block deals and headlines can do what those days never did.
 
 **A stop is a plan, not a guarantee.** In a fast market, a gap or a circuit, a stop can fill far past its price, or not at all at a lower circuit.
 

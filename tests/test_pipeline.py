@@ -113,6 +113,17 @@ class Units(unittest.TestCase):
         self.assertTrue(all(abs(a["price"] - b["price"]) >= 0.8 for a in lv for b in lv if a is not b))
         self.assertLessEqual(len(lv), 3)
 
+    def test_vol_ratio_scales_to_todays_pace(self):
+        sys.path.insert(0, str(SK / "dalal-timemachine"))
+        import timemachine as tm
+        t0 = dt.datetime(2026, 11, 2, 9, 15, tzinfo=dt.timezone(dt.timedelta(hours=5, minutes=30)))
+        pools = {f"09:{15 + 5 * i:02d}": [(1.0, 1.002, 0.998, 1.0)] * 10 for i in range(6)}   # normal range 0.4%
+        fast = [{"dt": t0 + dt.timedelta(minutes=5 * i), "o": 100, "h": 101.0, "l": 99.8, "c": 100.5} for i in range(4)]
+        self.assertAlmostEqual(tm.vol_ratio(fast, pools), 3.0, places=2)        # 1.2% vs 0.4%
+        self.assertEqual(tm.vol_ratio(fast[:2], pools), 1.0)                   # too early to tell
+        wild = [dict(b, h=110, l=90) for b in fast]
+        self.assertEqual(tm.vol_ratio(wild, pools), 4.0)                       # clamped
+
     def test_indian_number_format(self):
         self.assertEqual(fmt_inr(1234567.5), "₹12,34,567.50")
         self.assertEqual(fmt_inr(-500), "-₹500.00")
