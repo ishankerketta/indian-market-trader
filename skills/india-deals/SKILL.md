@@ -23,4 +23,6 @@ Lead with the stocks with the largest net value, name the clients, and note the 
 
 These are public filings, often days old by the time they matter, and often one side of a negotiated trade. They are context, not a signal: never present them as a reason to buy or sell.
 
+**Insider (PIT) is experimental:** in live checks (Nov 2026) NSE's endpoint answered but returned no rows, dated or undated. If it comes back empty, say so plainly and point the user to nseindia.com > Companies > Insider Trading; never present an empty result as "no insider activity".
+
 Run bulk and block after about 17:00 IST, when NSE publishes the day's file. NSE's website sometimes blocks scripted access; if a fetch fails, try again later.

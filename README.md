@@ -45,7 +45,7 @@ Needs Python 3.8+ and nothing else. The first time you size a trade, Claude asks
 | `/india-risk` | Risk Manager | Daily loss limit, trades per day, entry window, SEBI insider guard, holidays, ASM/GSM, T2T series, live circuit limits, results days, pump risk, levels in the way: PASS or BLOCK |
 | `/india-broker` | Order Executor | Paper ledger by default; live orders via Angel One, Dhan, Zerodha, Upstox, FYERS, Groww or OpenAlgo, never without your yes |
 | `/india-alerts` | Price Alerts | Rings on the stop, the target, any level, and at flat-by |
-| `/india-deals` | Smart Money Tracker | NSE bulk and block deals, and promoter/director trades under SEBI's insider rules |
+| `/india-deals` | Smart Money Tracker | NSE bulk and block deals; promoter/director trades under SEBI's insider rules (experimental: NSE's endpoint currently returns no rows) |
 | `/india-journal` | Trading Journal | Win rate, expectancy in rupees and R, charges, drawdown and streaks, plus a go-live readiness check |
 
 ## How a trade flows

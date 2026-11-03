@@ -253,9 +253,22 @@ def nse_quote(symbol):
 
     Returns {} when NSE refuses; callers fall back to sec_list.csv bands.
     """
+    path = f"/api/quote-equity?symbol={urllib.parse.quote(symbol)}"
+    fx = f"nse_quote_{_fixture_key(symbol)}.json"
     try:
-        j = nse_json(f"/api/quote-equity?symbol={urllib.parse.quote(symbol)}", f"nse_quote_{_fixture_key(symbol)}.json")
+        j = nse_json(path, fx)
     except (DataError, ValueError):
+        j = None
+    if not j and _fixtures() is None and _nse_opener is not None:
+        # Seen live: quote-equity refuses a session primed only on the home page. A browser visits
+        # the stock's quote page first, which sets the extra cookies; do the same and retry once.
+        try:
+            http_get(f"https://www.nseindia.com/get-quotes/equity?symbol={urllib.parse.quote(symbol)}",
+                     opener=_nse_opener, retries=0)
+            j = nse_json(path, fx)
+        except (DataError, ValueError):
+            j = None
+    if not isinstance(j, dict) or not j:
         return {}
     pi = j.get("priceInfo") or {}
     si = j.get("securityInfo") or {}
