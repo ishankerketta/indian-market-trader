@@ -48,6 +48,15 @@ def run_pool(fn, symbols):
     return results, errors
 
 
+def report_errors(errs, verbose):
+    """Always name what failed (a renamed or delisted symbol is common); -v shows all."""
+    if not errs:
+        return
+    shown = errs if verbose else errs[:5]
+    print("Could not fetch:", "; ".join(e[:90] for e in shown) + (f" (+{len(errs) - 5} more, -v)" if len(errs) > len(shown) else ""))
+    print("A symbol that fails every time may have been renamed or delisted; check it on nseindia.com.")
+
+
 # ---------------------------------------------------------------- daily
 
 def daily_one(sym, cfg):
@@ -104,8 +113,7 @@ def cmd_daily(args, cfg):
         print(f"{r['symbol']:<14}{r['close']:>10.2f}{r['change_pct']:>7.2f}{r['gap_pct']:>7.2f}"
               f"{(r['rsi'] or 0):>6.1f}{r['vol_ratio']:>7.2f}{r['turnover_cr']:>9.1f}  {', '.join(r['setups'])}")
     print("Watchlist saved to dalal/watchlist.json for the ORB scan.")
-    if errs and args.verbose:
-        print("\n".join(errs[:20]), file=sys.stderr)
+    report_errors(errs, args.verbose)
 
 
 # ---------------------------------------------------------------- orb
@@ -174,8 +182,7 @@ def cmd_orb(args, cfg):
         print(f"{r['symbol']:<14}{r['side']:<6}{r['or_low']:>10.2f}{r['or_high']:>10.2f}{r['trigger_time']:>9}"
               f"{r['trigger_close']:>10.2f}{r['pct_beyond']:>9.2f}{(r['rvol'] or 0):>6.2f}"
               f"{(r['day_change_pct'] or 0):>7.2f}")
-    if errs and args.verbose:
-        print("\n".join(errs[:20]), file=sys.stderr)
+    report_errors(errs, args.verbose)
 
 
 def main():

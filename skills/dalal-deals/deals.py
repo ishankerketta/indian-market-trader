@@ -83,7 +83,15 @@ def cmd_insider(args):
     frm = (t - dt.timedelta(days=args.days)).strftime("%d-%m-%Y")
     to = t.strftime("%d-%m-%Y")
     j = nse_json(f"/api/corporates-pit?index=equities&from_date={frm}&to_date={to}", "nse_pit.json")
-    rows = j.get("data", []) if isinstance(j, dict) else j
+    if isinstance(j, dict):
+        rows = j.get("data") or j.get("Data") or j.get("rows") or []
+    else:
+        rows = j or []
+    if not rows:
+        shape = f"keys: {', '.join(list(j)[:8])}" if isinstance(j, dict) else f"type {type(j).__name__}"
+        print(f"NSE returned no insider rows for {frm} to {to} ({shape}). That is unusual for a working day: "
+              "NSE may have refused the request or changed the endpoint. Check "
+              "nseindia.com > Companies > Insider Trading to compare.")
     want = filter_syms(args)
     out = []
     for r in rows:

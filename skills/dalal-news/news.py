@@ -18,7 +18,7 @@ sys.path.insert(0, str(pathlib.Path(__file__).resolve().parent.parent / "_dalal"
 
 from core import IST, die, now, read_state, write_state, norm_symbol  # noqa: E402
 from data import DataError, chart, google_news, nse_json, yahoo_news  # noqa: E402
-from text import label, score, tag  # noqa: E402
+from text import label, mentions, results_upcoming, score, stock_aliases, tag  # noqa: E402
 from universe import names  # noqa: E402
 
 
@@ -83,8 +83,9 @@ def one(sym, hours, t, nm):
             errs.append(str(e))
     filings, results_soon, note = nse_filings(sym, t)
     items += filings
+    aliases = stock_aliases(sym, nm)
     cutoff = t - dt.timedelta(hours=hours)
-    seen, kept = set(), []
+    seen, kept, dropped = set(), [], 0
     for it in sorted(items, key=lambda x: x["time"] or t, reverse=True):
         k = _norm_title(it["title"])
         if not k or k in seen:
@@ -92,18 +93,25 @@ def one(sym, hours, t, nm):
         seen.add(k)
         if it["time"] and it["time"] < cutoff:
             continue
+        # Google News matches loosely; keep only headlines that name the company
+        if it["via"] == "google_news" and not mentions(it["title"], sym, aliases):
+            dropped += 1
+            continue
         s = score(it["title"])
         it.update({"tags": tag(it["title"]), "score": round(s, 2), "label": label(s),
                    "time": it["time"].isoformat(timespec="minutes") if it["time"] else None})
         kept.append(it)
-    if any("results" in it["tags"] for it in kept[:10]) and not results_soon:
-        if any(re.search(r"(board meeting|to consider|results on|date)", it["title"], re.I) for it in kept[:10]):
-            results_soon, note = True, "headlines mention an upcoming results date"
-    move = None
+    if not results_soon:
+        recent = [it for it in kept if it["time"] and t - dt.datetime.fromisoformat(it["time"]) <= dt.timedelta(hours=36)]
+        hit = next((it for it in recent if "results" in it["tags"] and results_upcoming(it["title"])), None)
+        if hit:
+            results_soon, note = True, f"headline suggests results are due: \"{hit['title'][:80]}\""
+    move, move_day = None, None
     try:
         d = chart(sym, "1d", "5d")["bars"]
         if len(d) >= 2:
             move = round((d[-1]["c"] / d[-2]["c"] - 1) * 100, 2)
+            move_day = d[-1]["dt"].date()
     except DataError:
         pass
     tags = {}
@@ -111,7 +119,9 @@ def one(sym, hours, t, nm):
         for tg in it["tags"]:
             tags[tg] = tags.get(tg, 0) + 1
     avg = round(sum(i["score"] for i in kept) / len(kept), 2) if kept else 0.0
-    return {"symbol": sym, "name": nm, "move_pct": move, "count": len(kept), "avg_score": avg,
+    return {"symbol": sym, "name": nm, "move_pct": move,
+            "move_label": ("today" if move_day == t.date() else f"last session ({move_day:%a %d %b})") if move_day else "",
+            "count": len(kept), "off_topic_dropped": dropped, "avg_score": avg,
             "tone": label(avg), "tag_counts": tags, "results_soon": results_soon, "results_note": note,
             "items": kept[:25], "errors": errs}
 
@@ -130,8 +140,9 @@ def main():
         r = one(sym, args.hours, t, nmap.get(sym, ""))
         out["stocks"].append(r)
         mv = f"{r['move_pct']:+.2f}%" if r["move_pct"] is not None else "n/a"
-        print(f"\n{sym} {('(' + r['name'] + ') ') if r['name'] else ''}today {mv}; {r['count']} items in "
-              f"{args.hours}h, tone {r['tone']} ({r['avg_score']:+.2f})")
+        print(f"\n{sym} {('(' + r['name'] + ') ') if r['name'] else ''}{r['move_label'] or 'move'} {mv}; "
+              f"{r['count']} items in {args.hours}h (dropped {r['off_topic_dropped']} off-topic), "
+              f"tone {r['tone']} ({r['avg_score']:+.2f})")
         if r["results_soon"]:
             print(f"  !! {r['results_note']} - a day trade must be flat before the announcement")
         for it in r["items"][:8]:

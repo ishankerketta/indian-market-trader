@@ -75,6 +75,31 @@ class Units(unittest.TestCase):
         self.assertTrue(text.mentions("bought $IEX today", "IEX"))
         self.assertFalse(text.mentions("flexible pricing", "IEX"))
 
+    def test_aliases_and_relevance(self):
+        a = text.stock_aliases("SBIN", "State Bank of India")
+        self.assertIn("SBI", a)
+        self.assertTrue(text.mentions("SBI, NSE and 7 other stocks set to announce Q2 results today", "SBIN", a))
+        self.assertFalse(text.mentions("IPO fundraising rises 30% to record", "SBIN", a))
+        self.assertFalse(text.mentions("Updated estimates", "SBIN", a))
+
+    def test_results_upcoming_is_forward_looking(self):
+        self.assertTrue(text.results_upcoming("SBI set to announce Q2 results today"))
+        self.assertTrue(text.results_upcoming("Board meeting to consider results on Nov 5"))
+        self.assertFalse(text.results_upcoming("Consensus has updated its estimates after results"))
+        self.assertFalse(text.results_upcoming("Shares surge 12% after strong Q2 results"))
+
+    def test_reddit_rss_parsing(self):
+        import data
+        rss = b"""<?xml version="1.0" encoding="UTF-8"?><feed xmlns="http://www.w3.org/2005/Atom">
+<entry><category term="IndianStreetBets" label="r/IndianStreetBets"/><title>SBIN results play?</title>
+<content type="html">&lt;p&gt;Holding into results&lt;/p&gt;</content><link href="https://www.reddit.com/r/x/1"/>
+<updated>2026-11-02T10:00:00+00:00</updated></entry></feed>"""
+        p = data._reddit_rss(rss)
+        self.assertEqual(len(p), 1)
+        self.assertEqual(p[0]["sub"], "IndianStreetBets")
+        self.assertIn("Holding into results", p[0]["text"])
+        self.assertEqual(p[0]["time"].utcoffset(), dt.timedelta(hours=5, minutes=30))
+
     def test_indian_number_format(self):
         self.assertEqual(fmt_inr(1234567.5), "₹12,34,567.50")
         self.assertEqual(fmt_inr(-500), "-₹500.00")

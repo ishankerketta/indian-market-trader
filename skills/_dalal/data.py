@@ -8,7 +8,9 @@ which is how the test suite runs offline and how you can replay a past day.
 import csv
 import datetime as dt
 import gzip
+import html
 import http.cookiejar
+import re
 import io
 import json
 import os
@@ -268,13 +270,56 @@ REDDIT_SUBS = ["IndianStreetBets", "StockMarketIndia", "IndiaInvestments", "Dala
 
 
 def reddit_search(query, subs=None, window="week", limit=100, fixture_key=None):
-    """Public Reddit search JSON. Reddit rate-limits unauthenticated clients; may return nothing."""
+    """Public Reddit search: JSON first, then the RSS feed, which Reddit blocks less often.
+
+    Unauthenticated access is rate-limited and sometimes refused outright; raises DataError
+    with both reasons when neither works.
+    """
     subs = subs or REDDIT_SUBS
-    url = (f"https://www.reddit.com/r/{'+'.join(subs)}/search.json?"
-           f"q={urllib.parse.quote(query)}&restrict_sr=1&sort=new&t={window}&limit={limit}")
-    raw = http_get(url, headers={"User-Agent": "indian-market-trader/0.1 (research; open source)"},
-                   fixture=f"reddit_{_fixture_key(fixture_key or query)}.json", retries=1)
-    j = json.loads(raw)
+    key = _fixture_key(fixture_key or query)
+    q = (f"q={urllib.parse.quote(query)}&restrict_sr=1&sort=new&t={window}&limit={limit}")
+    base = f"https://www.reddit.com/r/{'+'.join(subs)}/search"
+    hdr = {"User-Agent": "indian-market-trader/0.1 (research; open source)"}
+    try:
+        raw = http_get(f"{base}.json?{q}", headers=hdr, fixture=f"reddit_{key}.json", retries=0)
+        return _reddit_json(json.loads(raw))
+    except (DataError, ValueError) as e_json:
+        try:
+            raw = http_get(f"{base}.rss?{q}", headers={"User-Agent": UA}, fixture=f"reddit_{key}.xml", retries=0)
+            return _reddit_rss(raw)
+        except (DataError, ET.ParseError) as e_rss:
+            raise DataError(f"json: {_short(e_json)}; rss: {_short(e_rss)}")
+
+
+def _short(e):
+    s = str(e)
+    for code in ("403", "429", "401", "404", "fixture missing"):
+        if code in s:
+            return {"fixture missing": "no fixture"}.get(code, f"HTTP {code}")
+    return s[:60]
+
+
+def _reddit_rss(raw):
+    ns = {"a": "http://www.w3.org/2005/Atom"}
+    root = ET.fromstring(raw)
+    out = []
+    for e in root.findall("a:entry", ns):
+        when = None
+        up = e.findtext("a:updated", default="", namespaces=ns) or e.findtext("a:published", default="", namespaces=ns)
+        try:
+            when = dt.datetime.fromisoformat(up.replace("Z", "+00:00")).astimezone(IST)
+        except ValueError:
+            pass
+        link = e.find("a:link", ns)
+        cat = e.find("a:category", ns)
+        body = re.sub(r"<[^>]+>", " ", html.unescape(e.findtext("a:content", default="", namespaces=ns)))
+        out.append({"title": e.findtext("a:title", default="", namespaces=ns), "text": " ".join(body.split())[:500],
+                    "sub": cat.get("term", "") if cat is not None else "", "upvotes": None, "comments": None,
+                    "url": link.get("href", "") if link is not None else "", "time": when})
+    return [p for p in out if p["time"]]
+
+
+def _reddit_json(j):
     out = []
     for ch in (j.get("data") or {}).get("children", []):
         d = ch.get("data") or {}

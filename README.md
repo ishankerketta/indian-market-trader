@@ -98,6 +98,12 @@ Tests run offline on synthetic fixtures in the exact shapes the data sources ret
 python3 -m unittest discover -s tests -v
 ```
 
+Check every live data source in one go (run it on your own machine; paste the output into an issue if something fails):
+
+```
+python3 tests/live_check.py RELIANCE
+```
+
 Replay any moment with `DALAL_NOW=2026-11-02T09:41`. Point the tools at saved data with `DALAL_FIXTURES=folder`.
 
 ## Fine print

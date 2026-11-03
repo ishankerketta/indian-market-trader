@@ -20,7 +20,7 @@ sys.path.insert(0, str(pathlib.Path(__file__).resolve().parent.parent / "_dalal"
 
 from core import die, load_config, now, read_state, write_state, norm_symbol  # noqa: E402
 from data import DataError, chart, google_news, reddit_search, yahoo_news  # noqa: E402
-from text import label, mentions, pump_flags, score  # noqa: E402
+from text import label, mentions, pump_flags, score, stock_aliases  # noqa: E402
 from universe import names  # noqa: E402
 
 
@@ -56,19 +56,22 @@ def one(sym, nm, days, cfg, t):
             news += fetch()
         except (DataError, ValueError) as e:
             errs.append(str(e))
+    aliases = stock_aliases(sym, nm)
     seen, nclean = set(), []
     for it in news:
         k = it["title"].lower()[:70]
         if k in seen:
             continue
         seen.add(k)
+        if it.get("via") == "google_news" and not mentions(it["title"], sym, aliases):
+            continue
         it["score"] = score(it["title"])
         nclean.append(it)
     social = []
     social_ok = True
-    aliases = [nm.split(" Limited")[0].split(" Ltd")[0]] if nm else []
+    query = " OR ".join([sym] + [f"\"{a}\"" if " " in a else a for a in aliases[:2] if a.upper() != sym])
     try:
-        for p in reddit_search(sym if not aliases else f"{sym} OR \"{aliases[0]}\"", fixture_key=sym):
+        for p in reddit_search(query, fixture_key=sym):
             txt = p["title"] + " " + p["text"]
             if not mentions(txt, sym, aliases):
                 continue
@@ -141,7 +144,8 @@ def main():
             print(f"  reddit: {s['count_24h']} posts in 24h vs {s['per_day_before']}/day before (x{s['buzz_ratio']}), "
                   f"score {s['score_24h']:+.2f}, promo phrases {r['pump_phrases']}")
         elif not r["social_available"]:
-            print("  reddit: unavailable right now (rate-limited or blocked); news only")
+            why = next((e for e in r["errors"] if e.startswith("reddit:")), "reddit: unknown")
+            print(f"  reddit: unavailable right now ({why[8:]}); news only")
         if r["pump_note"]:
             print(f"  !! {r['pump_note']}")
         for h in r["headlines"][:4]:

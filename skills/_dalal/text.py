@@ -95,9 +95,55 @@ def mentions(text, symbol, aliases=()):
     t = (text or "").lower()
     keys = [symbol.lower()] + [a.lower() for a in aliases if a]
     for k in keys:
-        if len(k) <= 3:
-            if re.search(r"(?<![a-z])\$?" + re.escape(k) + r"(?![a-z])", t):
-                return True
-        elif k in t:
+        if re.search(r"(?<![a-z0-9])\$?" + re.escape(k) + r"(?![a-z0-9])", t):
             return True
     return False
+
+
+# Names people actually use in headlines, where the company name alone is not enough.
+COMMON_ALIASES = {
+    "SBIN": ["SBI"], "RELIANCE": ["RIL", "Reliance"], "HDFCBANK": ["HDFC Bank"], "ICICIBANK": ["ICICI Bank"],
+    "KOTAKBANK": ["Kotak"], "AXISBANK": ["Axis Bank"], "LT": ["L&T", "Larsen"], "M&M": ["M&M", "Mahindra & Mahindra"],
+    "TMPV": ["Tata Motors"], "TMCV": ["Tata Motors"], "INFY": ["Infosys"], "HINDUNILVR": ["HUL", "Hindustan Unilever"],
+    "BHARTIARTL": ["Airtel"], "MARUTI": ["Maruti"], "BAJFINANCE": ["Bajaj Finance"], "TCS": ["TCS"],
+    "HCLTECH": ["HCL Tech", "HCLTech"], "SUNPHARMA": ["Sun Pharma"], "ULTRACEMCO": ["UltraTech"],
+    "ADANIENT": ["Adani Enterprises"], "ADANIPORTS": ["Adani Ports"], "POWERGRID": ["Power Grid"],
+    "COALINDIA": ["Coal India"], "TATASTEEL": ["Tata Steel"], "JSWSTEEL": ["JSW Steel"], "ASIANPAINT": ["Asian Paints"],
+}
+
+GENERIC_FIRST = {"state", "india", "indian", "bank", "the", "national", "new", "general", "united", "power", "first",
+                 "bharat", "hindustan", "oil", "life", "tata", "adani", "bajaj", "jsw", "hdfc", "icici", "aditya",
+                 "birla", "godrej", "mahindra", "central", "punjab", "union", "great", "global", "max", "star"}
+
+
+def stock_aliases(symbol, name):
+    """Ways a headline might name this stock: cleaned name, first two words, a distinctive first word,
+    the initialism (State Bank of India -> SBI) and a few hand-picked common names."""
+    out = list(COMMON_ALIASES.get(symbol, []))
+    clean = re.sub(r"[\s.,]*\b(ltd|limited)\b\.?$", "", name or "", flags=re.I).strip(" .,")
+    words = re.findall(r"[A-Za-z][A-Za-z&'-]*", clean)
+    if clean:
+        out.append(clean)
+    if len(words) >= 2:
+        out.append(" ".join(words[:2]))
+    if words and len(words[0]) >= 4 and words[0].lower() not in GENERIC_FIRST:
+        out.append(words[0])
+    initials = "".join(w[0] for w in words if w.lower() not in {"of", "and", "the", "&"}).upper()
+    if 3 <= len(initials) <= 5:
+        out.append(initials)
+    seen, uniq = set(), []
+    for a in out:
+        if a.lower() not in seen:
+            seen.add(a.lower())
+            uniq.append(a)
+    return uniq
+
+
+UPCOMING_RESULTS = re.compile(
+    r"\b(board meeting|to (consider|announce|declare|report)|set to (announce|report)|results? (on|today|tomorrow)"
+    r"|results? date|earnings (on|today|tomorrow)|preview|ahead of (q[1-4]|results|earnings))\b", re.I)
+
+
+def results_upcoming(title):
+    """Forward-looking results language only ("set to announce Q2 results today"), not reports of past results."""
+    return bool(UPCOMING_RESULTS.search(title or ""))
