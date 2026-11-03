@@ -23,36 +23,36 @@ Or as a plugin in Claude Code:
 /plugin install indian-market-trader@indian-market-trader
 ```
 
-Or copy the folders (keep `_dalal`, the shared library, next to the skills):
+Or copy the folders (keep `_shared`, the shared library, next to the skills):
 
 ```
 git clone https://github.com/ishankerketta/indian-market-trader.git
 cp -r indian-market-trader/skills/* ~/.claude/skills/
 ```
 
-Needs Python 3.8+. Nothing to pip install. The first time you size a trade, Claude asks for your capital and loss limits and writes `dalal/config.json` (see `skills/dalal-budget/config.example.json`).
+Needs Python 3.8+. Nothing to pip install. The first time you size a trade, Claude asks for your capital and loss limits and writes `trader/config.json` (see `skills/india-budget/config.example.json`).
 
 ## The thirteen
 
 | command | job | what it does |
 |---|---|---|
-| `/dalal-scanner` | Chart Scanner | Scans Nifty 500 (or all NSE) for opening-range breakouts, 20-day breakouts, 52-week highs, oversold bounces, volume spikes, gaps |
-| `/dalal-news` | News Monitor | Yahoo, Google News India, NSE filings and board meetings; tags results, order wins, deals, regulatory news; flags results days |
-| `/dalal-sentiment` | Sentiment & Buzz | News and Reddit (r/IndianStreetBets and friends) tone, mention spikes vs normal, and a pump-and-dump risk flag |
-| `/dalal-levels` | Levels | The 4-week high and low, up to 3 major support/resistance lines and 3-5 three-day lines on a clean chart of any stock or index |
-| `/dalal-entry` | Entry Timer | Watches the setup bar by bar: waiting, triggered, or expired (and refuses to chase) |
-| `/dalal-exit` | Exit Planner | Stop, target and a 15:10 flat-by before you enter, rounded to NSE ticks, reward:risk after charges |
-| `/dalal-timemachine` | Time Machine | 10,000 replays of the rest of the session from the stock's own candles, scaled to today's pace, plus the same rule on ~60 past sessions, net of charges |
-| `/dalal-costs` | Charges Calculator | STT, NSE fees, SEBI fee, stamp duty, GST and brokerage, net P&L and breakeven |
-| `/dalal-budget` | Budget Manager | Sizes the position so the loss at the stop, charges included, stays within your limit |
-| `/dalal-risk` | Risk Manager | Daily loss limit, trades per day, entry window, T2T series, circuit bands, results days, pump risk: PASS or BLOCK |
-| `/dalal-broker` | Order Executor | Paper ledger by default; live mode prepares exact orders for your broker, never without your yes |
-| `/dalal-alerts` | Price Alerts | Rings on the stop, the target, any level, and at flat-by |
-| `/dalal-deals` | Smart Money Tracker | NSE bulk and block deals, and promoter/director trades filed under SEBI's insider rules |
+| `/india-scanner` | Chart Scanner | Scans Nifty 500 (or all NSE) for opening-range breakouts, 20-day breakouts, 52-week highs, oversold bounces, volume spikes, gaps |
+| `/india-news` | News Monitor | Yahoo, Google News India, NSE filings and board meetings; tags results, order wins, deals, regulatory news; flags results days |
+| `/india-sentiment` | Sentiment & Buzz | News and Reddit (r/IndianStreetBets and friends) tone, mention spikes vs normal, and a pump-and-dump risk flag |
+| `/india-levels` | Levels | The 4-week high and low, up to 3 major support/resistance lines and 3-5 three-day lines on a clean chart of any stock or index |
+| `/india-entry` | Entry Timer | Watches the setup bar by bar: waiting, triggered, or expired (and refuses to chase) |
+| `/india-exit` | Exit Planner | Stop, target and a 15:10 flat-by before you enter, rounded to NSE ticks, reward:risk after charges |
+| `/india-timemachine` | Time Machine | 10,000 replays of the rest of the session from the stock's own candles, scaled to today's pace, plus the same rule on ~60 past sessions, net of charges |
+| `/india-charges` | Charges Calculator | STT, NSE fees, SEBI fee, stamp duty, GST and brokerage, net P&L and breakeven |
+| `/india-budget` | Budget Manager | Sizes the position so the loss at the stop, charges included, stays within your limit |
+| `/india-risk` | Risk Manager | Daily loss limit, trades per day, entry window, T2T series, circuit bands, results days, pump risk: PASS or BLOCK |
+| `/india-broker` | Order Executor | Paper ledger by default; live mode prepares exact orders for your broker, never without your yes |
+| `/india-alerts` | Price Alerts | Rings on the stop, the target, any level, and at flat-by |
+| `/india-deals` | Smart Money Tracker | NSE bulk and block deals, and promoter/director trades filed under SEBI's insider rules |
 
 ## How a trade flows
 
-Everything lands in a `dalal/` folder in your project, and each skill reads what the last one wrote:
+Everything lands in a `trader/` folder in your project, and each skill reads what the last one wrote:
 
 ```
 scanner -> news -> sentiment -> levels -> entry -> exit -> timemachine -> budget -> risk -> broker   (one trade)
@@ -62,38 +62,38 @@ scanner daily / deals / sentiment                                               
 
 A walkthrough on the **synthetic test data** in `tests/` (made-up company TESTCO, not a real stock), so you can see each step's job:
 
-1. **`/dalal-scanner`** at 09:41 IST: TESTCO closed the 09:35 five-minute bar at 1707.63, above its 09:15-09:30 range of 1704.78-1707.31.
-2. **`/dalal-news`**: an order win and strong results headlines in the last 12 hours.
-3. **`/dalal-sentiment`**: Reddit mentions at 16x their normal rate, full of "10x multibagger" and "Telegram group" talk. Pump risk: **high**.
-4. **`/dalal-entry`**: triggered, last price 1718.72, still inside the 1% chase limit. (At 12:30 the same check says expired: it ran away, do not chase.)
-5. **`/dalal-exit`**: entry 1718.72, stop at the range low 1704.70, target 2.5R 1753.70, flat by 15:10. Reward:risk 2.5 gross, 2.09 after charges.
-6. **`/dalal-timemachine`** (seed 42, so anyone can repeat it): TESTCO had been moving at 0.68x its normal pace that morning, so the replayed candles were scaled down to match. In 10,000 replays the target came first 7.5% of the time, the stop 11.1%, and 81.4% were still open at flat-by. On the 59 past sessions the same rule fired 54 times: 19 targets, 26 stops, 9 neither.
+1. **`/india-scanner`** at 09:41 IST: TESTCO closed the 09:35 five-minute bar at 1707.63, above its 09:15-09:30 range of 1704.78-1707.31.
+2. **`/india-news`**: an order win and strong results headlines in the last 12 hours.
+3. **`/india-sentiment`**: Reddit mentions at 16x their normal rate, full of "10x multibagger" and "Telegram group" talk. Pump risk: **high**.
+4. **`/india-entry`**: triggered, last price 1718.72, still inside the 1% chase limit. (At 12:30 the same check says expired: it ran away, do not chase.)
+5. **`/india-exit`**: entry 1718.72, stop at the range low 1704.70, target 2.5R 1753.70, flat by 15:10. Reward:risk 2.5 gross, 2.09 after charges.
+6. **`/india-timemachine`** (seed 42, so anyone can repeat it): TESTCO had been moving at 0.68x its normal pace that morning, so the replayed candles were scaled down to match. In 10,000 replays the target came first 7.5% of the time, the stop 11.1%, and 81.4% were still open at flat-by. On the 59 past sessions the same rule fired 54 times: 19 targets, 26 stops, 9 neither.
 
    Why the scaling matters, from a real replay: on RELIANCE's results day (2 Nov 2026), unscaled replays drawn from 59 normal sessions gave a 2R target at 1289.30 a 0% chance. The stock closed at 1300. The Time Machine now measures today's pace and stretches or shrinks the replays to match.
-7. **`/dalal-budget`** with ₹1,00,000 capital and ₹500 max loss: 28 shares, loss at the stop about ₹493 including charges.
-8. **`/dalal-risk`**: PASS, with a loud warning about the pump risk.
-9. **`/dalal-broker`**: the ticket in plain words; you type yes; the paper ledger fills 28 at the 1720.50 limit and exits at the target at 12:55, net ₹877.80 after ₹51.80 of charges.
+7. **`/india-budget`** with ₹1,00,000 capital and ₹500 max loss: 28 shares, loss at the stop about ₹493 including charges.
+8. **`/india-risk`**: PASS, with a loud warning about the pump risk.
+9. **`/india-broker`**: the ticket in plain words; you type yes; the paper ledger fills 28 at the 1720.50 limit and exits at the target at 12:55, net ₹877.80 after ₹51.80 of charges.
 
 With a 2R target instead of 2.5R, the same trade was **blocked**: after the limit-price buffer and charges, net reward:risk came to 1.38, under the 1.5 minimum. That's the point: look before you risk a rupee.
 
 ## The tools
 
 ```
-python3 skills/dalal-scanner/scan.py universe                  # Nifty 500 from NSE
-python3 skills/dalal-scanner/scan.py daily                     # setups -> watchlist
-python3 skills/dalal-scanner/scan.py orb                       # opening-range breakouts so far
-python3 skills/dalal-news/news.py --from-scan                  # headlines, filings, today's move
-python3 skills/dalal-sentiment/sentiment.py --from-scan        # tone, buzz, pump risk
-python3 skills/dalal-levels/levels.py NIFTY                    # levels + chart -> dalal/levels_NIFTY.html
-python3 skills/dalal-entry/entry.py check TCS                  # waiting / triggered / expired
-python3 skills/dalal-exit/exit.py plan --stop or-low --target 2R --write   # or --stop level / --target level
-python3 skills/dalal-timemachine/timemachine.py run --write    # 10,000 replays + history
-python3 skills/dalal-costs/charges.py --from-plan              # charges at stop and target
-python3 skills/dalal-budget/size.py --write                    # -> dalal/orders.json
-python3 skills/dalal-risk/check.py                             # PASS / BLOCK
-python3 skills/dalal-broker/ticket.py show | approve ID --yes | sync | ledger
-python3 skills/dalal-alerts/alerts.py add --from-plan ; alerts.py check
-python3 skills/dalal-deals/deals.py bulk | block | insider
+python3 skills/india-scanner/scan.py universe                  # Nifty 500 from NSE
+python3 skills/india-scanner/scan.py daily                     # setups -> watchlist
+python3 skills/india-scanner/scan.py orb                       # opening-range breakouts so far
+python3 skills/india-news/news.py --from-scan                  # headlines, filings, today's move
+python3 skills/india-sentiment/sentiment.py --from-scan        # tone, buzz, pump risk
+python3 skills/india-levels/levels.py NIFTY                    # levels + chart -> trader/levels_NIFTY.html
+python3 skills/india-entry/entry.py check TCS                  # waiting / triggered / expired
+python3 skills/india-exit/exit.py plan --stop or-low --target 2R --write   # or --stop level / --target level
+python3 skills/india-timemachine/timemachine.py run --write    # 10,000 replays + history
+python3 skills/india-charges/charges.py --from-plan              # charges at stop and target
+python3 skills/india-budget/size.py --write                    # -> trader/orders.json
+python3 skills/india-risk/check.py                             # PASS / BLOCK
+python3 skills/india-broker/ticket.py show | approve ID --yes | sync | ledger
+python3 skills/india-alerts/alerts.py add --from-plan ; alerts.py check
+python3 skills/india-deals/deals.py bulk | block | insider
 ```
 
 Tests run offline on synthetic fixtures in the exact shapes the data sources return:
@@ -108,7 +108,7 @@ Check every live data source in one go (run it on your own machine; paste the ou
 python3 tests/live_check.py RELIANCE
 ```
 
-Replay any moment with `DALAL_NOW=2026-11-02T09:41`. Point the tools at saved data with `DALAL_FIXTURES=folder`.
+Replay any moment with `IMT_NOW=2026-11-02T09:41`. Point the tools at saved data with `IMT_FIXTURES=folder`.
 
 ## Fine print
 
@@ -116,7 +116,7 @@ Replay any moment with `DALAL_NOW=2026-11-02T09:41`. Point the tools at saved da
 
 **Most intraday traders lose money.** SEBI's own study of the cash segment found about seven in ten individual intraday traders made losses in FY2022-23, and its F&O study found about nine in ten lost money. Charges are a big part of why. Paper trade first, for weeks, and judge the ledger's net numbers.
 
-**No trade without your yes.** Only `/dalal-broker` can lead to an order, only for a ticket that passed `/dalal-risk` in the last 15 minutes, and only after you type yes for that exact ticket. In live mode the script itself sends nothing; if you connect a broker MCP (Zerodha Kite, Upstox, Angel One), set its order tools to "needs approval" so Claude's approval card is a second check. Shorts and leverage are off unless you turn them on.
+**No trade without your yes.** Only `/india-broker` can lead to an order, only for a ticket that passed `/india-risk` in the last 15 minutes, and only after you type yes for that exact ticket. In live mode the script itself sends nothing; if you connect a broker MCP (Zerodha Kite, Upstox, Angel One), set its order tools to "needs approval" so Claude's approval card is a second check. Shorts and leverage are off unless you turn them on.
 
 **SEBI's retail algo rules.** Since 1 April 2026, orders sent through a broker API must come through the broker's compliant setup (registered static IP, exchange-tagged orders). One human-approved order at a time is far below the 10-orders-a-second line where formal algo registration starts, but your broker's API rules still apply.
 
@@ -126,7 +126,7 @@ Replay any moment with `DALAL_NOW=2026-11-02T09:41`. Point the tools at saved da
 
 **The data is free and unofficial.** Yahoo's chart endpoint and NSE's website are not official APIs: they lag, change and rate-limit. NSE blocks scripted access at times. Bars are 1- and 5-minute, not ticks. Check anything that matters in your broker's terminal. This tool is for personal use of public data; it does not redistribute market data.
 
-**Charges change.** Rates are 2026 statutory figures for NSE equity intraday. Compare one real contract note and override them in `dalal/config.json`.
+**Charges change.** Rates are 2026 statutory figures for NSE equity intraday. Compare one real contract note and override them in `trader/config.json`.
 
 **Taxes.** Intraday equity profits are generally speculative business income in India, taxed at your slab rate, and speculative losses can only be set off against speculative gains. Nothing here is tax advice.
 
@@ -134,7 +134,7 @@ Replay any moment with `DALAL_NOW=2026-11-02T09:41`. Point the tools at saved da
 
 ## Roadmap
 
-- `/dalal-analyst`: quarterly results summaries from NSE XBRL filings
+- `/india-analyst`: quarterly results summaries from NSE XBRL filings
 - First-class broker connectors (Kite, Upstox) for live order placement behind the approval protocol
 - Index options (Nifty, Bank Nifty) as a separate, clearly fenced pack
 

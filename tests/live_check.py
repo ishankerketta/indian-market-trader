@@ -13,7 +13,7 @@ import sys
 import time
 import urllib.parse
 
-sys.path.insert(0, str(pathlib.Path(__file__).resolve().parent.parent / "skills" / "_dalal"))
+sys.path.insert(0, str(pathlib.Path(__file__).resolve().parent.parent / "skills" / "_shared"))
 
 from core import IST  # noqa: E402
 import data  # noqa: E402

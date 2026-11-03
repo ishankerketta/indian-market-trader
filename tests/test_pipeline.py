@@ -14,7 +14,7 @@ from pathlib import Path
 
 ROOT = Path(__file__).resolve().parent.parent
 SK = ROOT / "skills"
-sys.path.insert(0, str(SK / "_dalal"))
+sys.path.insert(0, str(SK / "_shared"))
 sys.path.insert(0, str(ROOT / "tests"))
 
 import costs  # noqa: E402
@@ -114,7 +114,7 @@ class Units(unittest.TestCase):
         self.assertLessEqual(len(lv), 3)
 
     def test_vol_ratio_scales_to_todays_pace(self):
-        sys.path.insert(0, str(SK / "dalal-timemachine"))
+        sys.path.insert(0, str(SK / "india-timemachine"))
         import timemachine as tm
         t0 = dt.datetime(2026, 11, 2, 9, 15, tzinfo=dt.timezone(dt.timedelta(hours=5, minutes=30)))
         pools = {f"09:{15 + 5 * i:02d}": [(1.0, 1.002, 0.998, 1.0)] * 10 for i in range(6)}   # normal range 0.4%
@@ -135,14 +135,14 @@ class Pipeline(unittest.TestCase):
         cls.tmp = tempfile.TemporaryDirectory()
         base = Path(cls.tmp.name)
         cls.fx = make_fixtures.make(base / "fx")
-        cls.state = base / "dalal"
+        cls.state = base / "trader"
 
     @classmethod
     def tearDownClass(cls):
         cls.tmp.cleanup()
 
     def run_tool(self, rel, *args, when="2026-11-02T09:41", ok=True):
-        env = dict(os.environ, DALAL_FIXTURES=str(self.fx), DALAL_DIR=str(self.state), DALAL_NOW=when)
+        env = dict(os.environ, IMT_FIXTURES=str(self.fx), IMT_DIR=str(self.state), IMT_NOW=when)
         p = subprocess.run([sys.executable, str(SK / rel), *args], capture_output=True, text=True, env=env,
                            cwd=self.tmp.name, timeout=120)
         if ok:
@@ -153,93 +153,93 @@ class Pipeline(unittest.TestCase):
         return json.loads((self.state / name).read_text())
 
     def test_full_trade(self):
-        self.run_tool("dalal-scanner/scan.py", "universe")
+        self.run_tool("india-scanner/scan.py", "universe")
         uni = self.state_json("universe.json")
         self.assertEqual({s["symbol"] for s in uni["symbols"]}, {"TESTCO", "FLATCO", "T2TCO"})
 
-        self.run_tool("dalal-scanner/scan.py", "daily", "--symbols", "TESTCO,FLATCO")
+        self.run_tool("india-scanner/scan.py", "daily", "--symbols", "TESTCO,FLATCO")
         self.assertTrue(self.state_json("watchlist.json")["symbols"])
 
-        out = self.run_tool("dalal-scanner/scan.py", "orb", "--symbols", "TESTCO,FLATCO").stdout
+        out = self.run_tool("india-scanner/scan.py", "orb", "--symbols", "TESTCO,FLATCO").stdout
         scan = self.state_json("scan.json")
         self.assertEqual([c["symbol"] for c in scan["candidates"]], ["TESTCO"], out)
         cand = scan["candidates"][0]
         self.assertGreater(cand["trigger_close"], cand["or_high"])
 
         # Before the range completes the timer must wait
-        self.run_tool("dalal-entry/entry.py", "check", "TESTCO", when="2026-11-02T09:25")
+        self.run_tool("india-entry/entry.py", "check", "TESTCO", when="2026-11-02T09:25")
         self.assertEqual(self.state_json("entry.json")["status"], "waiting")
-        self.run_tool("dalal-entry/entry.py", "check", "TESTCO")
+        self.run_tool("india-entry/entry.py", "check", "TESTCO")
         entry = self.state_json("entry.json")
         self.assertEqual(entry["status"], "triggered")
         self.assertEqual(entry["trigger_time"], cand["trigger_time"])
         # Much later the price has run away: do not chase
-        self.run_tool("dalal-entry/entry.py", "check", "TESTCO", when="2026-11-02T12:30")
+        self.run_tool("india-entry/entry.py", "check", "TESTCO", when="2026-11-02T12:30")
         self.assertEqual(self.state_json("entry.json")["status"], "expired")
-        self.run_tool("dalal-entry/entry.py", "check", "TESTCO")
+        self.run_tool("india-entry/entry.py", "check", "TESTCO")
 
-        self.run_tool("dalal-exit/exit.py", "plan", "--stop", "or-low", "--target", "2.5R", "--write")
+        self.run_tool("india-exit/exit.py", "plan", "--stop", "or-low", "--target", "2.5R", "--write")
         plan = self.state_json("plan.json")
         self.assertLess(plan["stop"], plan["entry"])
         self.assertAlmostEqual(plan["target"] - plan["entry"], 2.5 * (plan["entry"] - plan["stop"]), delta=0.2)
 
-        self.run_tool("dalal-timemachine/timemachine.py", "run", "--sims", "2000", "--seed", "19", "--write")
+        self.run_tool("india-timemachine/timemachine.py", "run", "--sims", "2000", "--seed", "19", "--write")
         sim = self.state_json("sim.json")
         self.assertAlmostEqual(sum(sim["sim_pct"].values()), 100.0, delta=0.2)
         self.assertGreater(sim["history_signals"], 10)
         # Same seed, same answer
-        self.run_tool("dalal-timemachine/timemachine.py", "run", "--sims", "2000", "--seed", "19", "--write")
+        self.run_tool("india-timemachine/timemachine.py", "run", "--sims", "2000", "--seed", "19", "--write")
         self.assertEqual(self.state_json("sim.json")["sim_pct"], sim["sim_pct"])
 
-        self.run_tool("dalal-budget/size.py", "--write")
+        self.run_tool("india-budget/size.py", "--write")
         order = self.state_json("orders.json")["orders"][-1]
         self.assertLessEqual(order["est_loss_at_stop"], 500)
         self.assertLessEqual(order["value"], 50000)
         self.assertEqual(order["status"], "DRAFT")
 
-        self.run_tool("dalal-sentiment/sentiment.py", "--tickers", "TESTCO,FLATCO")
+        self.run_tool("india-sentiment/sentiment.py", "--tickers", "TESTCO,FLATCO")
         sent = {s["symbol"]: s for s in self.state_json("sentiment.json")["stocks"]}
         self.assertEqual(sent["TESTCO"]["pump_risk"], "high")
         self.assertEqual(sent["FLATCO"]["pump_risk"], "normal")
 
-        out = self.run_tool("dalal-risk/check.py").stdout
+        out = self.run_tool("india-risk/check.py").stdout
         self.assertIn("PASS", out)
         self.assertIn("pump risk", out)  # warned, not blocked
         order = self.state_json("orders.json")["orders"][-1]
         self.assertEqual(order["status"], "READY")
 
         # Approval needs the explicit --yes
-        p = self.run_tool("dalal-broker/ticket.py", "approve", order["id"], ok=False)
+        p = self.run_tool("india-broker/ticket.py", "approve", order["id"], ok=False)
         self.assertNotEqual(p.returncode, 0)
-        self.run_tool("dalal-broker/ticket.py", "approve", order["id"], "--yes")
-        self.run_tool("dalal-alerts/alerts.py", "add", "--from-plan")
-        self.run_tool("dalal-broker/ticket.py", "sync", when="2026-11-02T10:00")
+        self.run_tool("india-broker/ticket.py", "approve", order["id"], "--yes")
+        self.run_tool("india-alerts/alerts.py", "add", "--from-plan")
+        self.run_tool("india-broker/ticket.py", "sync", when="2026-11-02T10:00")
         self.assertEqual(self.state_json("orders.json")["orders"][-1]["status"], "OPEN")
-        self.run_tool("dalal-broker/ticket.py", "sync", when="2026-11-02T15:20")
+        self.run_tool("india-broker/ticket.py", "sync", when="2026-11-02T15:20")
         led = self.state_json("paper_ledger.json")
         self.assertEqual(len(led["closed"]), 1)
         trade = led["closed"][0]
         self.assertIn(trade["outcome"], ("target", "stop", "flat"))
         self.assertAlmostEqual(led["cash"], 100000 + trade["net_pnl"], places=2)
-        out = self.run_tool("dalal-alerts/alerts.py", "check", when="2026-11-02T15:20").stdout
+        out = self.run_tool("india-alerts/alerts.py", "check", when="2026-11-02T15:20").stdout
         self.assertIn("RING", out)
         self.assertEqual(self.state_json("risk.json")["orders"][0]["verdict"], "PASS")
 
     def test_daily_bars_patched_from_intraday(self):
         import data
-        os.environ["DALAL_FIXTURES"] = str(self.fx)
+        os.environ["IMT_FIXTURES"] = str(self.fx)
         try:
             raw = data.chart("FLATCO", "1d", "1y")["bars"]
             patched = data.daily("FLATCO", "1y")
         finally:
-            os.environ.pop("DALAL_FIXTURES")
+            os.environ.pop("IMT_FIXTURES")
         self.assertEqual(raw[-1]["dt"].date(), dt.date(2026, 10, 30))      # Yahoo lags a session
         self.assertEqual(patched[-1]["dt"].date(), dt.date(2026, 11, 2))   # rebuilt from 5-minute bars
         self.assertTrue(patched[-1]["patched"])
 
     def test_levels_chart(self):
-        self.run_tool("dalal-scanner/scan.py", "universe")
-        out = self.run_tool("dalal-levels/levels.py", "FLATCO", when="2026-11-02T15:30").stdout
+        self.run_tool("india-scanner/scan.py", "universe")
+        out = self.run_tool("india-levels/levels.py", "FLATCO", when="2026-11-02T15:30").stdout
         lv = self.state_json("levels.json")["FLATCO"]
         self.assertLessEqual(len(lv["major"]), 3)
         self.assertLessEqual(len(lv["short_term"]), 5)
@@ -252,7 +252,7 @@ class Pipeline(unittest.TestCase):
         self.assertIn("<svg", html)
         self.assertIn("Nearest support", out)
         # Replaying a morning must not see that afternoon's bars
-        self.run_tool("dalal-levels/levels.py", "TESTCO", "--no-chart", when="2026-11-02T09:41")
+        self.run_tool("india-levels/levels.py", "TESTCO", "--no-chart", when="2026-11-02T09:41")
         lv = self.state_json("levels.json")["TESTCO"]
         self.assertLess(lv["range_high"]["when"], "2026-11-02T09:41")
 
@@ -286,14 +286,14 @@ class Pipeline(unittest.TestCase):
         self.assertEqual(res["daily loss limit"], "BLOCK")
 
     def test_deals_and_news(self):
-        self.run_tool("dalal-scanner/scan.py", "universe")
-        self.run_tool("dalal-deals/deals.py", "bulk")
+        self.run_tool("india-scanner/scan.py", "universe")
+        self.run_tool("india-deals/deals.py", "bulk")
         d = self.state_json("deals.json")["bulk"]
         t = next(a for a in d["by_symbol"] if a["symbol"] == "TESTCO")
         self.assertAlmostEqual(t["buy_cr"], 500000 * 1004.20 / 1e7, places=1)
-        self.run_tool("dalal-deals/deals.py", "insider", "--symbols", "TESTCO")
+        self.run_tool("india-deals/deals.py", "insider", "--symbols", "TESTCO")
         self.assertEqual(len(self.state_json("deals.json")["insider"]["trades"]), 1)
-        self.run_tool("dalal-news/news.py", "--tickers", "TESTCO", "--hours", "24")
+        self.run_tool("india-news/news.py", "--tickers", "TESTCO", "--hours", "24")
         n = self.state_json("news.json")["stocks"][0]
         titles = [i["title"] for i in n["items"]]
         self.assertTrue(any("order" in t for t in titles))
@@ -301,7 +301,7 @@ class Pipeline(unittest.TestCase):
         self.assertEqual(n["tone"], "positive")
 
 
-sys.path.insert(0, str(SK / "dalal-risk"))
+sys.path.insert(0, str(SK / "india-risk"))
 
 if __name__ == "__main__":
     unittest.main()
