@@ -60,10 +60,21 @@ def vwap(day_bars):
 # ---------------------------------------------------------------- bar timing
 
 def bar_minutes(bars):
-    if len(bars) < 2:
+    """The bar size in minutes: the most common gap between bars.
+
+    Not the smallest gap: during the session Yahoo adds a still-forming bar stamped at the
+    current minute (say 11:42 after the 11:40 bar), which would make the smallest gap 2 minutes.
+    """
+    gaps = [round((bars[i + 1]["t"] - bars[i]["t"]) / 60) for i in range(len(bars) - 1)
+            if bars[i + 1]["t"] > bars[i]["t"]]
+    gaps = [g for g in gaps if g > 0]
+    if not gaps:
         return 5
-    d = min((bars[i + 1]["t"] - bars[i]["t"]) for i in range(len(bars) - 1) if bars[i + 1]["t"] > bars[i]["t"])
-    return max(1, round(d / 60))
+    counts = {}
+    for g in gaps:
+        counts[g] = counts.get(g, 0) + 1
+    best = max(counts.values())
+    return min(g for g, c in counts.items() if c == best)
 
 
 def completed(day_bars, at, minutes=None):

@@ -239,6 +239,29 @@ class Pipeline(unittest.TestCase):
         spec.loader.exec_module(scan)
         self.assertTrue(callable(scan.pick_symbols))
 
+    def test_live_forming_bar_does_not_break_bar_size_or_orb(self):
+        """Yahoo adds a still-forming bar mid-session (e.g. 11:42 after 11:40). It must not change the
+        bar size, and a breakout above the 09:15-09:30 range must still be found."""
+        import datetime as _dt
+        sys.path.insert(0, str(SK / "_shared"))
+        import indicators as ind
+        ist = _dt.timezone(_dt.timedelta(hours=5, minutes=30))
+        day = _dt.datetime(2026, 11, 3, 9, 15, tzinfo=ist)
+        bars = []
+        price = 100.0
+        for i in range(30):                                  # 09:15 .. 11:40, 5-minute bars
+            t = day + _dt.timedelta(minutes=5 * i)
+            price += 0.0 if i < 3 else 0.3                   # flat opening range, then a climb
+            bars.append({"dt": t, "t": int(t.timestamp()), "o": price, "h": price + 0.2, "l": price - 0.2, "c": price, "v": 1000})
+        t = day + _dt.timedelta(minutes=147)                 # 11:42, the forming bar
+        bars.append({"dt": t, "t": int(t.timestamp()), "o": price, "h": price + 0.1, "l": price - 0.1, "c": price, "v": 10})
+        self.assertEqual(ind.bar_minutes(bars), 5)
+        at = day + _dt.timedelta(minutes=147)
+        orr, trig = ind.orb_trigger(bars, 15, "long", ("09:30", "14:30"), at)
+        self.assertIsNotNone(orr)
+        self.assertIsNotNone(trig)
+        self.assertEqual(trig["dt"].strftime("%H:%M"), "09:30")
+
     def test_daily_bars_patched_from_intraday(self):
         import data
         os.environ["IMT_FIXTURES"] = str(self.fx)
