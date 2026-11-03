@@ -1,6 +1,6 @@
 {
   "name": "indian-market-trader",
-  "version": "0.3.0",
+  "version": "0.3.1",
   "description": "15 Claude skills for intraday trading on NSE India: market pulse, scanner, levels, news and social sentiment, entry/exit timing, a Time Machine for the odds after charges, sizing, SEBI-aware risk checks, paper trading, a journal, and broker connections (Angel One, Dhan, Zerodha, Upstox, FYERS, Groww, OpenAlgo). Never an order without your yes.",
   "author": {
     "name": "Ishan Savio Kerketta"

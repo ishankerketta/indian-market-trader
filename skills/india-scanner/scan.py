@@ -134,26 +134,26 @@ def cmd_daily(args, cfg):
 def orb_one(sym, cfg, at, sides):
     data = chart(sym, "5m", "5d")
     days = by_day(data["bars"])
-    if not days:
-        return None
     today = at.date()
-    if today not in days:
-        return None
+    if not days or today not in days:
+        return {"_skip": "no_bars_today"}
     tb = session_bars(days[today])
     m = bar_minutes(tb)
     done = completed(tb, at, m)
     if not done:
-        return None
+        return {"_skip": "no_bars_today"}
     prior = [session_bars(v) for d, v in days.items() if d < today]
     prev_close = prior[-1][-1]["c"] if prior and prior[-1] else data.get("prev_close")
     found = None
+    had_range = False
     for side in sides:
         orr, trig = orb_trigger(tb, cfg["orb_minutes"], side, cfg["entry_window"], at)
+        had_range = had_range or bool(orr)
         if orr and trig:
             found = (side, orr, trig)
             break
     if not found:
-        return None
+        return {"_skip": "no_breakout" if had_range else "range_not_ready"}
     side, orr, trig = found
     edge = orr["high"] if side == "long" else orr["low"]
     beyond = (trig["c"] / edge - 1) * 100 * (1 if side == "long" else -1)
@@ -163,7 +163,8 @@ def orb_one(sym, cfg, at, sides):
     past = [sum(b["v"] for b in d if (b["dt"] + dt.timedelta(minutes=m)).time() <= cut) for d in prior if d]
     rvol = vol_today / (sum(past) / len(past)) if past and sum(past) else None
     last = done[-1]["c"]
-    return {"symbol": sym, "side": side, "or_high": round(orr["high"], 2), "or_low": round(orr["low"], 2),
+    holding = last > orr["high"] if side == "long" else last < orr["low"]
+    return {"symbol": sym, "side": side, "holding": holding, "or_high": round(orr["high"], 2), "or_low": round(orr["low"], 2),
             "trigger_time": (trig["dt"] + dt.timedelta(minutes=m)).strftime("%H:%M"),  # when the bar closed
             "trigger_close": round(trig["c"], 2), "pct_beyond": round(beyond, 2),
             "last": round(last, 2), "or_width_pct": round((orr["high"] / orr["low"] - 1) * 100, 2),
@@ -184,20 +185,37 @@ def cmd_orb(args, cfg):
         print("note: shorts are off (allow_short=false in config); scanning longs only.")
         sides = ["long"]
     syms = pick_symbols(args, cfg, prefer_watchlist=not args.all)
-    res, errs = run_pool(lambda s: orb_one(s, cfg, at, sides), syms)
-    res.sort(key=lambda r: (-(r["rvol"] or 0), -r["pct_beyond"]))
+    allres, errs = run_pool(lambda s: orb_one(s, cfg, at, sides), syms)
+    skips = {}
+    for r in allres:
+        if "_skip" in r:
+            skips[r["_skip"]] = skips.get(r["_skip"], 0) + 1
+    res = [r for r in allres if "_skip" not in r]
+    res.sort(key=lambda r: (not r["holding"], -(r["rvol"] or 0), -r["pct_beyond"]))
     out = {"mode": "orb", "at": at.isoformat(timespec="minutes"), "orb_minutes": cfg["orb_minutes"],
-           "scanned": len(syms), "errors": len(errs), "candidates": res}
+           "scanned": len(syms), "errors": len(errs), "skipped": skips, "candidates": res}
     write_state("scan.json", out)
+    holding = sum(1 for r in res if r["holding"])
     print(f"{at:%a %d %b %Y %H:%M} IST: {len(res)} of {len(syms)} stocks have closed a 5-minute bar beyond "
           f"their {cfg['orb_minutes']}-minute opening range ({len(errs)} fetch errors).")
     if res:
-        print(f"{'symbol':<14}{'side':<6}{'OR low':>10}{'OR high':>10}{'trigger':>9}{'close':>10}"
-              f"{'beyond%':>9}{'rvol':>6}{'day%':>7}")
+        print(f"Still above their range now: {holding}. Fell back inside (breakout failed): {len(res) - holding}.")
+        print(f"{'symbol':<14}{'side':<6}{'OR low':>10}{'OR high':>10}{'trigger':>9}{'trig close':>11}"
+              f"{'beyond%':>9}{'last':>10}{'rvol':>6}{'day%':>7}  status")
     for r in res[: args.top]:
         print(f"{r['symbol']:<14}{r['side']:<6}{r['or_low']:>10.2f}{r['or_high']:>10.2f}{r['trigger_time']:>9}"
-              f"{r['trigger_close']:>10.2f}{r['pct_beyond']:>9.2f}{(r['rvol'] or 0):>6.2f}"
-              f"{(r['day_change_pct'] or 0):>7.2f}")
+              f"{r['trigger_close']:>11.2f}{r['pct_beyond']:>9.2f}{r['last']:>10.2f}{(r['rvol'] or 0):>6.2f}"
+              f"{(r['day_change_pct'] or 0):>7.2f}  {'holding' if r['holding'] else 'BACK INSIDE the range'}")
+    why = []
+    if skips.get("no_breakout"):
+        why.append(f"{skips['no_breakout']} never closed a bar beyond their range")
+    if skips.get("range_not_ready"):
+        why.append(f"{skips['range_not_ready']} have no finished opening range yet")
+    if skips.get("no_bars_today"):
+        why.append(f"{skips['no_bars_today']} have no bars for today (data not available yet, or not trading)")
+    if why:
+        print("The rest: " + "; ".join(why) + ".")
+    print("A stock that broke out earlier may already have run too far: check `entry.py check SYMBOL` before acting.")
     report_errors(errs, args.verbose)
 
 

@@ -262,6 +262,40 @@ class Pipeline(unittest.TestCase):
         self.assertIsNotNone(trig)
         self.assertEqual(trig["dt"].strftime("%H:%M"), "09:30")
 
+    def test_orb_marks_failed_breakout_and_explains_skips(self):
+        """A stock that broke out and then fell back inside its range must be flagged, and a stock with no
+        bars today must be counted as such, not silently dropped."""
+        import datetime as _dt
+        import importlib.util
+        sys.path.insert(0, str(SK / "_shared"))
+        spec = importlib.util.spec_from_file_location("scan_mod", SK / "india-scanner" / "scan.py")
+        scan = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(scan)
+        ist = _dt.timezone(_dt.timedelta(hours=5, minutes=30))
+        day = _dt.datetime(2026, 11, 3, 9, 15, tzinfo=ist)
+
+        def bars_for(closes):
+            out = []
+            for i, c in enumerate(closes):
+                t = day + _dt.timedelta(minutes=5 * i)
+                out.append({"dt": t, "t": int(t.timestamp()), "o": c, "h": c + 0.2, "l": c - 0.2, "c": c, "v": 1000})
+            return out
+
+        # 3 bars of range around 100, a close at 101 (breakout), then back to 99.5 (failed)
+        failed = bars_for([100, 100, 100, 101, 100.5, 99.5, 99.5])
+        holding = bars_for([100, 100, 100, 101, 101.5, 102, 102])
+        quiet = bars_for([100, 100, 100, 100, 100.1, 100, 100])
+        yesterday = [dict(b, dt=b["dt"] - _dt.timedelta(days=1), t=b["t"] - 86400) for b in quiet]
+        feeds = {"FAIL": failed, "HOLD": holding, "QUIET": quiet, "NOTODAY": yesterday}
+        scan.chart = lambda sym, interval, rng: {"bars": feeds[sym], "prev_close": 100.0}
+        at = day + _dt.timedelta(minutes=35)
+        cfg = {"orb_minutes": 15, "entry_window": ["09:30", "14:30"]}
+        r = {s_: scan.orb_one(s_, cfg, at, ["long"]) for s_ in feeds}
+        self.assertFalse(r["FAIL"]["holding"])
+        self.assertTrue(r["HOLD"]["holding"])
+        self.assertEqual(r["QUIET"], {"_skip": "no_breakout"})
+        self.assertEqual(r["NOTODAY"], {"_skip": "no_bars_today"})
+
     def test_daily_bars_patched_from_intraday(self):
         import data
         os.environ["IMT_FIXTURES"] = str(self.fx)

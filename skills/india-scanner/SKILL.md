@@ -22,10 +22,12 @@ python3 <skill-dir>/scan.py orb --all                 # the whole universe (slow
 
 1. Before the open (or the evening before): `universe`, then `daily`. Present the top names and their setups in a short table, then the watchlist that was saved.
 2. After 09:30 IST: `orb`. A candidate has CLOSED a 5-minute bar beyond its 15-minute opening range (09:15-09:30). Rank by `rvol` (volume so far vs the same window on prior days) and how far past the range it closed.
-3. Hand the best one or two to `/india-news` and `/india-sentiment`, then `/india-entry`.
+3. Prefer rows marked `holding`. When few or none qualify, say why using the line starting "The rest:" (never closed beyond the range, range not ready, or no bars today) and do not suggest forcing a trade.
+4. Hand the best one or two to `/india-news` and `/india-sentiment`, then `/india-entry`.
 
 ## Reading the output
 
+- `status` says whether the stock is still above its range now (`holding`) or has fallen back inside it (`BACK INSIDE the range`: a failed breakout, do not take it). `last` is the latest finished bar's close. A stock that triggered long ago may already have run too far: run `/india-entry` before acting.
 - `beyond%` tiny (under ~0.1%) means a marginal break; wide ranges (`or_width_pct` > 2%) make the stop expensive.
 - `rvol` above 1.5 means unusual participation; below 1 is a weak breakout.
 - Longs only by default. Shorts need `"allow_short": true` in `trader/config.json`.
