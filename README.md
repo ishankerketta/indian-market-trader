@@ -6,6 +6,10 @@ Free, MIT, no signup. Plain standard-library Python reading free public data: Ya
 
 **No trade goes through until you say yes.** Paper trading is the default. Live orders need you to switch paper off yourself, a fresh risk PASS, and your typed yes for that exact ticket. Every rupee of STT, brokerage and GST is counted.
 
+**Status: beta (v0.3, November 2026).** Market data, scanning, levels, sentiment, the Time Machine, charges, sizing, risk checks and paper trading have been run against live NSE data. Broker connections: Angel One login and read-only calls (positions, orders) are verified on a real account. Placing orders, and the Dhan, Zerodha, Upstox, FYERS and Groww adapters, are built from each broker's public API docs and not yet tested with real money: start on paper, then one share. Tested on macOS. Windows should work (type `py` instead of `python3`, and log in to brokers from PowerShell) but is not yet tested. If something breaks, please open an issue with the output.
+
+Not investment advice, and most intraday traders lose money: read the fine print at the end before using real money.
+
 Ask in English, Hindi or Hinglish ("aaj market kaisa hai?", "RELIANCE ke levels dikhao").
 
 ## Install
