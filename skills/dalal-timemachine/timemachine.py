@@ -114,8 +114,8 @@ def history(plan, cfg, hist_days, flat_by_t, atr_value):
             continue
         e = trig["c"]
         try:
-            s = stop_price(plan["stop_rule"], side, e, orr, atr_value)
-            t = target_price(plan["target_rule"], side, e, s)
+            s = stop_price(plan.get("hist_stop_rule", plan["stop_rule"]), side, e, orr, atr_value)
+            t = target_price(plan.get("hist_target_rule", plan["target_rule"]), side, e, s)
         except ValueError:
             continue
         if (side == "long" and s >= e) or (side == "short" and s <= e):

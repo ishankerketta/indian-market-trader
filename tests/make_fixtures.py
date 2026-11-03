@@ -93,6 +93,12 @@ def make(out):
             prev = px
             px = s[-1][4]
         Path(out, f"chart_{sym}_5m.json").write_text(json.dumps(yahoo(sym + ".NS", rows, round(prev, 2))))
+        # 15-minute bars: every three 5-minute bars combined
+        r15 = []
+        for i in range(0, len(rows), 3):
+            g = rows[i:i + 3]
+            r15.append((g[0][0], g[0][1], max(x[2] for x in g), min(x[3] for x in g), g[-1][4], sum(x[5] for x in g)))
+        Path(out, f"chart_{sym}_15m.json").write_text(json.dumps(yahoo(sym + ".NS", r15, round(prev, 2))))
         # Daily: 190 earlier synthetic days + the 60 above
         rng2 = random.Random(seed + 100)
         early, p = [], daily[0][1] * 0.9

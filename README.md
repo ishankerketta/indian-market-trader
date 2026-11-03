@@ -1,6 +1,6 @@
 # Indian Market Trader
 
-12 Claude skills for intraday trading on NSE India: scan Nifty 500 charts for breakouts, read the news and the social-media mood, time every entry and exit, replay the odds after charges before you risk a rupee, then size, risk-check and paper trade the order.
+13 Claude skills for intraday trading on NSE India: scan Nifty 500 charts for breakouts, draw the support and resistance levels that matter, read the news and the social-media mood, time every entry and exit, replay the odds after charges before you risk a rupee, then size, risk-check and paper trade the order.
 
 Free, MIT, no signup, no API key. Plain standard-library Python reading free public data: Yahoo Finance (`.NS` bars), NSE's archives and website, Google News India and Reddit.
 
@@ -32,13 +32,14 @@ cp -r indian-market-trader/skills/* ~/.claude/skills/
 
 Needs Python 3.8+. Nothing to pip install. The first time you size a trade, Claude asks for your capital and loss limits and writes `dalal/config.json` (see `skills/dalal-budget/config.example.json`).
 
-## The twelve
+## The thirteen
 
 | command | job | what it does |
 |---|---|---|
 | `/dalal-scanner` | Chart Scanner | Scans Nifty 500 (or all NSE) for opening-range breakouts, 20-day breakouts, 52-week highs, oversold bounces, volume spikes, gaps |
 | `/dalal-news` | News Monitor | Yahoo, Google News India, NSE filings and board meetings; tags results, order wins, deals, regulatory news; flags results days |
 | `/dalal-sentiment` | Sentiment & Buzz | News and Reddit (r/IndianStreetBets and friends) tone, mention spikes vs normal, and a pump-and-dump risk flag |
+| `/dalal-levels` | Levels | The 4-week high and low, up to 3 major support/resistance lines and 3-5 three-day lines on a clean chart of any stock or index |
 | `/dalal-entry` | Entry Timer | Watches the setup bar by bar: waiting, triggered, or expired (and refuses to chase) |
 | `/dalal-exit` | Exit Planner | Stop, target and a 15:10 flat-by before you enter, rounded to NSE ticks, reward:risk after charges |
 | `/dalal-timemachine` | Time Machine | 10,000 replays of the rest of the session from the stock's own candles, plus the same rule on ~60 past sessions, net of charges |
@@ -54,7 +55,7 @@ Needs Python 3.8+. Nothing to pip install. The first time you size a trade, Clau
 Everything lands in a `dalal/` folder in your project, and each skill reads what the last one wrote:
 
 ```
-scanner -> news -> sentiment -> entry -> exit -> timemachine -> budget -> risk -> broker   (one trade)
+scanner -> news -> sentiment -> levels -> entry -> exit -> timemachine -> budget -> risk -> broker   (one trade)
 alerts: stop, target, flat by 15:10                                                       (while it is open)
 scanner daily / deals / sentiment                                                         (before the open, after the close)
 ```
@@ -81,8 +82,9 @@ python3 skills/dalal-scanner/scan.py daily                     # setups -> watch
 python3 skills/dalal-scanner/scan.py orb                       # opening-range breakouts so far
 python3 skills/dalal-news/news.py --from-scan                  # headlines, filings, today's move
 python3 skills/dalal-sentiment/sentiment.py --from-scan        # tone, buzz, pump risk
+python3 skills/dalal-levels/levels.py NIFTY                    # levels + chart -> dalal/levels_NIFTY.html
 python3 skills/dalal-entry/entry.py check TCS                  # waiting / triggered / expired
-python3 skills/dalal-exit/exit.py plan --stop or-low --target 2R --write
+python3 skills/dalal-exit/exit.py plan --stop or-low --target 2R --write   # or --stop level / --target level
 python3 skills/dalal-timemachine/timemachine.py run --write    # 10,000 replays + history
 python3 skills/dalal-costs/charges.py --from-plan              # charges at stop and target
 python3 skills/dalal-budget/size.py --write                    # -> dalal/orders.json

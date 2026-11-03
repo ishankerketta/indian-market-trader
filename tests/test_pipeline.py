@@ -100,6 +100,19 @@ class Units(unittest.TestCase):
         self.assertIn("Holding into results", p[0]["text"])
         self.assertEqual(p[0]["time"].utcoffset(), dt.timedelta(hours=5, minutes=30))
 
+    def test_levels_are_sparse_and_ranked(self):
+        import sr
+        t0 = dt.datetime(2026, 11, 2, 9, 15, tzinfo=dt.timezone(dt.timedelta(hours=5, minutes=30)))
+        pts = []
+        # 5 touches at 100, 3 at 110, 2 at 100.3 (should merge into 100), 3 at 110.4 (too close to 110)
+        for i, p in enumerate([100, 100.1, 99.9, 100.05, 99.95, 110, 110.1, 109.9, 100.3, 100.25, 110.4, 110.5, 110.45]):
+            pts.append({"kind": "peak" if i % 2 else "trough", "price": p, "dt": t0 + dt.timedelta(days=i)})
+        lv = sr.pick_levels(pts, tol=0.4, max_lines=3, min_touches=3)
+        self.assertEqual(round(lv[0]["price"]), 100)
+        self.assertGreaterEqual(lv[0]["touches"], 6)
+        self.assertTrue(all(abs(a["price"] - b["price"]) >= 0.8 for a in lv for b in lv if a is not b))
+        self.assertLessEqual(len(lv), 3)
+
     def test_indian_number_format(self):
         self.assertEqual(fmt_inr(1234567.5), "₹12,34,567.50")
         self.assertEqual(fmt_inr(-500), "-₹500.00")
@@ -201,6 +214,25 @@ class Pipeline(unittest.TestCase):
         self.assertIn("RING", out)
         self.assertEqual(self.state_json("risk.json")["orders"][0]["verdict"], "PASS")
 
+    def test_levels_chart(self):
+        self.run_tool("dalal-scanner/scan.py", "universe")
+        out = self.run_tool("dalal-levels/levels.py", "FLATCO", when="2026-11-02T15:30").stdout
+        lv = self.state_json("levels.json")["FLATCO"]
+        self.assertLessEqual(len(lv["major"]), 3)
+        self.assertLessEqual(len(lv["short_term"]), 5)
+        self.assertTrue(all(m["touches"] >= 3 for m in lv["major"]))
+        self.assertTrue(all(s["touches"] >= 2 for s in lv["short_term"]))
+        lines = sorted(l["price"] for l in lv["major"] + lv["short_term"])
+        span = lv["range_high"]["price"] - lv["range_low"]["price"]
+        self.assertTrue(all(b - a >= 0.04 * span * 0.3 for a, b in zip(lines, lines[1:])), lines)
+        html = (self.state / "levels_FLATCO.html").read_text()
+        self.assertIn("<svg", html)
+        self.assertIn("Nearest support", out)
+        # Replaying a morning must not see that afternoon's bars
+        self.run_tool("dalal-levels/levels.py", "TESTCO", "--no-chart", when="2026-11-02T09:41")
+        lv = self.state_json("levels.json")["TESTCO"]
+        self.assertLess(lv["range_high"]["when"], "2026-11-02T09:41")
+
     def test_risk_blocks_trade_to_trade_late_entries_and_circuits(self):
         import check
         from core import DEFAULT_CONFIG, IST
@@ -217,6 +249,14 @@ class Pipeline(unittest.TestCase):
         self.assertEqual(res["entry window"], "BLOCK")
         self.assertEqual(res["room below upper circuit"], "BLOCK")   # target 109 > 105 * 0.99
         self.assertEqual(res["max loss per trade"], "PASS")
+        ctx["levels"] = {"T2TCO": {"time": "2026-11-02T09:30", "range_high": {"price": 120, "when": "x"},
+                                   "range_low": {"price": 90, "when": "y"},
+                                   "major": [{"price": 106.5, "touches": 5, "peaks": 3, "troughs": 2}],
+                                   "short_term": []}}
+        warn = next(c for c in check.check_order(order, cfg, ctx) if c["check"] == "levels in the way")
+        self.assertEqual(warn["result"], "WARN")
+        self.assertIn("106.5", warn["detail"])
+        ctx["levels"] = {}
         ctx["stats"] = (-1480.0, 3, 0.0)   # 1,480 lost + 30 at risk > 1,500 limit
         res = {c["check"]: c["result"] for c in check.check_order(order, cfg, ctx)}
         self.assertEqual(res["trades per day"], "BLOCK")

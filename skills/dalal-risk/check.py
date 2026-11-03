@@ -16,6 +16,7 @@ sys.path.insert(0, str(pathlib.Path(__file__).resolve().parent.parent / "_dalal"
 from core import at_today, die, fmt_inr, load_config, now, read_state, write_state  # noqa: E402
 from data import DataError, chart  # noqa: E402
 from indicators import band_limits  # noqa: E402
+from sr import all_lines  # noqa: E402
 from universe import load_bands  # noqa: E402
 
 
@@ -90,6 +91,22 @@ def check_order(o, cfg, ctx):
                 ok = o["target"] > dn * (1 + buf) and o["limit"] > dn * (1 + buf)
                 add("room above lower circuit", ok, f"lower circuit {dn:.2f} (prev close {pc:.2f}); target {o['target']}")
 
+    lv = ctx.get("levels", {}).get(o["symbol"])
+    if lv and lv.get("time", "")[:10] == t.date().isoformat():
+        lines = all_lines(lv)
+        if long_:
+            walls = sorted((l for l in lines if o["limit"] < l["price"] < o["target"]), key=lambda l: l["price"])
+        else:
+            walls = sorted((l for l in lines if o["target"] < l["price"] < o["limit"]), key=lambda l: -l["price"])
+        if walls:
+            w = walls[0]
+            tx = f", {w['touches']} touches" if "touches" in w else ""
+            add("levels in the way", False,
+                f"target {o['target']} is beyond {w['tier']} {w['price']}{tx}; price often stalls there "
+                f"(consider --target level)", "warn")
+        else:
+            add("levels in the way", True, "no support/resistance line between entry and target")
+
     news = ctx["news"].get(o["symbol"], {})
     if news.get("results_soon"):
         add("results / board meeting", False, news.get("results_note", "results due soon"), "warn")
@@ -126,7 +143,8 @@ def main():
             pass
         ctx = {"now": t, "stats": today_stats(ledger, [x for x in orders if x is not o], t.date().isoformat()),
                "cash": ledger.get("cash") if (ledger and cfg["paper"]) else None,
-               "bands": bands, "prev_close": prev_close, "news": news, "sentiment": sentiment}
+               "bands": bands, "prev_close": prev_close, "news": news, "sentiment": sentiment,
+               "levels": read_state("levels.json") or {}}
         checks = check_order(o, cfg, ctx)
         blocked = [c for c in checks if c["result"] == "BLOCK"]
         o["status"] = "BLOCKED" if blocked else "READY"
