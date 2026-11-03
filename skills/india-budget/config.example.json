@@ -27,6 +27,7 @@
   "entry_buffer_pct": 0.1,
   "order_type": "LIMIT",
   "broker_profile": "discount",
+  "pit_restricted": [],
   "rates": {},
   "buzz_spike_ratio": 3.0
 }

@@ -11,10 +11,11 @@ import pathlib
 import sys
 from concurrent.futures import ThreadPoolExecutor, as_completed
 
-sys.path.insert(0, str(pathlib.Path(__file__).resolve().parent.parent / "_shared"))
+_HERE = pathlib.Path(__file__).resolve().parent
+sys.path.insert(0, str(_HERE / "_shared" if (_HERE / "_shared").is_dir() else _HERE.parent / "_shared"))
 
 from core import at_today, die, load_config, now, read_state, write_state, norm_symbol  # noqa: E402
-from data import DataError, by_day, chart, daily, session_bars  # noqa: E402
+from data import DataError, by_day, chart, daily, market_day, session_bars  # noqa: E402
 from indicators import orb_trigger, rsi, bar_minutes, completed  # noqa: E402
 from universe import build_universe, load_universe  # noqa: E402
 
@@ -160,6 +161,9 @@ def orb_one(sym, cfg, at, sides):
 
 def cmd_orb(args, cfg):
     at = at_today(args.at) if args.at else now()
+    trading, why = market_day(at.date())
+    if not trading:
+        die(f"NSE is closed on {at:%a %d %b %Y} ({why}). Run `scan.py daily` for next session's setups.")
     if at.time() < (dt.datetime.combine(at.date(), dt.time(9, 15)) +
                     dt.timedelta(minutes=cfg["orb_minutes"])).time():
         die(f"the {cfg['orb_minutes']}-minute opening range is not complete yet at {at:%H:%M}")

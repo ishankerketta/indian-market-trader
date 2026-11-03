@@ -1,10 +1,24 @@
 {
   "name": "indian-market-trader",
-  "version": "0.2.0",
-  "description": "13 Claude skills for intraday trading on NSE India: scan charts, draw key levels, read news and social sentiment, time entries and exits, replay the odds after charges, size, risk-check and paper trade - never an order without your yes.",
+  "version": "0.3.0",
+  "description": "15 Claude skills for intraday trading on NSE India: market pulse, scanner, levels, news and social sentiment, entry/exit timing, a Time Machine for the odds after charges, sizing, SEBI-aware risk checks, paper trading, a journal, and broker connections (Angel One, Dhan, Zerodha, Upstox, FYERS, Groww, OpenAlgo). Never an order without your yes.",
   "author": {
     "name": "Ishan Savio Kerketta"
   },
   "license": "MIT",
-  "keywords": ["nse", "india", "day-trading", "intraday", "backtesting", "sentiment", "claude-skills"]
+  "keywords": [
+    "nse",
+    "india",
+    "day-trading",
+    "intraday",
+    "zerodha",
+    "angel-one",
+    "dhan",
+    "upstox",
+    "fyers",
+    "groww",
+    "backtesting",
+    "sentiment",
+    "claude-skills"
+  ]
 }

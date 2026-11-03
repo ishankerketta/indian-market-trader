@@ -16,6 +16,6 @@ Reads `trader/plan.json` and `trader/config.json`. With `--write` adds a DRAFT o
 - Entry is a LIMIT at the plan price plus a small buffer (`entry_buffer_pct`, default 0.1%); many brokers block market orders sent through APIs.
 - Leverage (MIS margin) is off by default. With `"use_leverage": true` the position cap is multiplied by `mis_leverage`. Say clearly that leverage multiplies losses as well as gains.
 
-First run: if `trader/config.json` does not exist, ask the user for their capital and the most they are willing to lose on one trade and in one day, and write the file (start from `config.example.json` in this folder). Suggest keeping the per-trade loss to about 0.5-1% of trading capital.
+First run: if `trader/config.json` does not exist, ask the user for their capital and the most they are willing to lose on one trade and in one day, and write the file (start from `config.example.json` in this folder). Suggest keeping the per-trade loss to about 0.5-1% of trading capital. Also ask which broker they use (for `"broker_profile"`) and whether they are a designated person at any listed company: those symbols go in `"pit_restricted"` so the Risk Manager blocks them.
 
 Show quantity, value, margin, loss at the stop and profit at the target in rupees after charges.

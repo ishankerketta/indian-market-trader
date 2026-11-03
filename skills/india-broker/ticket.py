@@ -7,20 +7,29 @@
   ticket.py sync                       paper: fill, stop, target or flatten from the latest bars
   ticket.py ledger                     paper cash, open positions and today's P&L
   ticket.py cancel ORDER_ID
-  ticket.py mark-sent ORDER_ID --broker-id X   live: record that the broker accepted it
+  ticket.py mark-sent ORDER_ID --broker-id X   live: record an order you placed yourself or via a connector
   ticket.py reset-paper [--cash 100000]
+
+Direct broker orders (Angel One, Dhan, Zerodha, Upstox, Fyers, Groww, OpenAlgo; log in with connect.py):
+  ticket.py preview ORDER_ID --broker angelone          the exact request(s), secrets hidden; sends nothing
+  ticket.py send ORDER_ID --broker angelone --live --yes   entry (Dhan: entry+target+stop as one Super Order)
+  ticket.py send-stop ORDER_ID --broker angelone --live --yes   the stop-loss, once the entry has filled
+  ticket.py record-exit ORDER_ID --entry 1240.5 --exit 1262 [--outcome target]   log a live trade for the journal
 """
 import argparse
 import datetime as dt
+import json
 import pathlib
 import sys
 
-sys.path.insert(0, str(pathlib.Path(__file__).resolve().parent.parent / "_shared"))
+_HERE = pathlib.Path(__file__).resolve().parent
+sys.path.insert(0, str(_HERE / "_shared" if (_HERE / "_shared").is_dir() else _HERE.parent / "_shared"))
 
-from core import IST, at_today, die, fmt_inr, load_config, now, read_state, write_state  # noqa: E402
+from core import IST, at_today, die, fmt_inr, load_config, now, read_state, write_state, parse_ts  # noqa: E402
 from costs import intraday_charges  # noqa: E402
 from data import DataError, by_day, chart, session_bars  # noqa: E402
 from indicators import bar_minutes  # noqa: E402
+import brokers as B  # noqa: E402
 
 
 def load_book():
@@ -86,7 +95,7 @@ def cmd_approve(book, cfg, oid, yes):
     o = find(book, oid)
     if o["status"] != "READY":
         die(f"{oid} is {o['status']}; only READY orders (passed the Risk Manager) can be approved")
-    checked = dt.datetime.fromisoformat(o["risk_checked"])
+    checked = parse_ts(o["risk_checked"])
     if (now() - checked).total_seconds() > 15 * 60:
         die("the risk check is more than 15 minutes old; run the Risk Manager again")
     if not yes:
@@ -112,6 +121,124 @@ def cmd_approve(book, cfg, oid, yes):
     for leg in broker_params(o):
         print("   ", leg)
     print("Then record the broker's order id: ticket.py mark-sent", o["id"], "--broker-id <id>")
+
+
+PLACEHOLDER = {"api_key": "API_KEY", "jwt": "JWT", "client_id": "CLIENT_ID", "token": "TOKEN",
+               "access_token": "ACCESS_TOKEN", "app_id": "APP_ID-100", "host": "http://127.0.0.1:5000"}
+
+
+def broker_requests(adapter, o, which="all", offline=False):
+    """[(label, request)] for this ticket. offline=True avoids downloading scrip masters (preview)."""
+    entry, stop = B.ticket_to_legs(o)
+    kw = {}
+    if offline or adapter.name in ("angelone", "dhan", "upstox"):
+        try:
+            if adapter.name == "angelone":
+                kw = {"token": adapter.symbol_map().get(o["symbol"]) if not offline else None}
+            elif adapter.name == "dhan":
+                kw = {"security_id": adapter.symbol_map().get(o["symbol"]) if not offline else None}
+            elif adapter.name == "upstox":
+                kw = {"isin": B._isin(o["symbol"])}
+        except Exception:  # noqa: BLE001 - preview still useful with a placeholder
+            kw = {}
+        if adapter.name == "angelone" and not kw.get("token"):
+            kw = {"token": {"token": "<symboltoken>", "tradingsymbol": f"{o['symbol']}-EQ"}}
+        if adapter.name == "dhan" and not kw.get("security_id"):
+            kw = {"security_id": "<securityId>"}
+        if adapter.name == "upstox" and not kw.get("isin"):
+            kw = {"isin": "<ISIN>"}
+    out = []
+    if adapter.places_bracket and which in ("all", "entry"):
+        out.append(("entry + target + stop-loss (one bracket order)", adapter.bracket(o, **kw)))
+        return out
+    if which in ("all", "entry"):
+        out.append(("entry", adapter.place(entry, **kw)))
+    if which in ("all", "stop"):
+        out.append(("stop-loss (send after the entry fills)", adapter.place(stop, **kw)))
+    return out
+
+
+def live_gate(o, cfg, live, yes, need_status=("READY", "APPROVED_LIVE")):
+    if cfg["paper"]:
+        die("paper mode is on. Live orders need \"paper\": false in trader/config.json, set by the person "
+            "themselves, deliberately.")
+    if o["status"] not in need_status:
+        die(f"{o['id']} is {o['status']}; it needs to be {' or '.join(need_status)}")
+    checked = parse_ts(o.get("risk_checked", "2000-01-01T00:00+05:30"))
+    if o["status"] == "READY" and (now() - checked).total_seconds() > 15 * 60:
+        die("the risk check is more than 15 minutes old; run the Risk Manager again")
+    if not (live and yes):
+        print("Ticket:\n    " + ticket_text(o))
+        die("nothing sent. Add --live --yes only after the person has typed yes for this exact ticket", 2)
+
+
+def cmd_preview(book, oid, broker):
+    o = find(book, oid)
+    try:
+        try:
+            a = B.get(broker)
+            logged_in = True
+        except B.BrokerError:
+            a = B.get(broker, session=PLACEHOLDER)
+            logged_in = False
+        reqs = broker_requests(a, o, offline=not logged_in)
+    except B.BrokerError as e:
+        die(str(e))
+    print(f"{a.name}: what would be sent for {o['id']} (nothing is sent by preview; secrets hidden)"
+          + ("" if logged_in else "\n(not logged in: placeholders shown for tokens and ids)"))
+    for label, req in reqs:
+        print(f"\n-- {label}\n{json.dumps(B.redact(req), indent=2)}")
+    print(f"\nCheck the fields against {B.DOCS[a.name]} before your first live order, and start with 1 share.")
+
+
+def cmd_send(book, cfg, oid, broker, live, yes, which):
+    o = find(book, oid)
+    if which == "stop":
+        live_gate(o, cfg, live, yes, need_status=("SENT",))
+        if o.get("stop_order_id"):
+            die(f"a stop-loss is already recorded for {oid} ({o['stop_order_id']})")
+    else:
+        live_gate(o, cfg, live, yes)
+    try:
+        a = B.get(broker)
+        reqs = broker_requests(a, o, which="stop" if which == "stop" else "entry")
+        label, req = reqs[0]
+        resp = B.http(req)
+    except B.BrokerError as e:
+        die(str(e))
+    oid_b = a.order_id(resp) if isinstance(resp, dict) else None
+    if not oid_b:
+        die(f"{a.name} did not confirm the order. Response: {json.dumps(resp)[:400]}. "
+            "Check your broker app before trying again; do not resend blindly.")
+    if which == "stop":
+        o["stop_order_id"] = oid_b
+        print(f"LIVE: stop-loss sent to {a.name}, order id {oid_b}. Confirm it in your broker app.")
+    else:
+        o.update({"status": "SENT", "broker": a.name, "broker_id": oid_b, "mode": "live",
+                  "sent": now().isoformat(timespec="minutes"), "bracket": a.places_bracket})
+        print(f"LIVE: {label} sent to {a.name}, order id {oid_b}. Confirm it in your broker app.")
+        if not a.places_bracket:
+            print(f"Once the entry fills, place the stop-loss: ticket.py send-stop {o['id']} --broker {a.name} --live --yes")
+    write_state("orders.json", book)
+
+
+def cmd_record_exit(book, cfg, oid, entry, exit_px, outcome):
+    o = find(book, oid)
+    long_ = o["side"] == "BUY"
+    buy, sell = (entry, exit_px) if long_ else (exit_px, entry)
+    ch = intraday_charges(buy, sell, o["qty"], cfg["broker_profile"], cfg["rates"])
+    led = read_state("live_ledger.json") or {"closed": []}
+    led["closed"].append({"id": o["id"], "symbol": o["symbol"], "date": now().date().isoformat(),
+                          "side": o["direction"], "qty": o["qty"], "entry": entry, "exit": exit_px,
+                          "outcome": outcome, "planned_stop": o["stop"], "planned_target": o["target"],
+                          "risk_ps": abs(o["limit"] - o["stop"]), "setup": o.get("setup", "orb"),
+                          "broker": o.get("broker"), "gross_pnl": ch["gross_pnl"], "charges": ch["total"],
+                          "net_pnl": ch["net_pnl"]})
+    o["status"] = "CLOSED"
+    write_state("live_ledger.json", led)
+    write_state("orders.json", book)
+    print(f"Logged {o['id']}: net {fmt_inr(ch['net_pnl'])} after {fmt_inr(ch['total'])} estimated charges "
+          "(check against your contract note).")
 
 
 def walk_bars(bars, o):
@@ -151,7 +278,7 @@ def cmd_sync(book, cfg):
             print(f"{o['id']}: no data ({e})")
             continue
         m = bar_minutes(bars)
-        approved = dt.datetime.fromisoformat(o["approved"])
+        approved = parse_ts(o["approved"])
         live = [b for b in bars if b["dt"] + dt.timedelta(minutes=m) > approved
                 and b["dt"] + dt.timedelta(minutes=m) <= t]
         long_ = o["side"] == "BUY"
@@ -232,9 +359,15 @@ def cmd_ledger(cfg):
 
 def main():
     ap = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
-    ap.add_argument("cmd", choices=["show", "approve", "sync", "ledger", "cancel", "mark-sent", "reset-paper"])
+    ap.add_argument("cmd", choices=["show", "approve", "sync", "ledger", "cancel", "mark-sent", "reset-paper",
+                                    "preview", "send", "send-stop", "record-exit"])
     ap.add_argument("id", nargs="?")
     ap.add_argument("--yes", action="store_true")
+    ap.add_argument("--live", action="store_true")
+    ap.add_argument("--broker")
+    ap.add_argument("--entry", type=float)
+    ap.add_argument("--exit", type=float)
+    ap.add_argument("--outcome", default="manual", choices=["target", "stop", "flat", "manual"])
     ap.add_argument("--broker-id")
     ap.add_argument("--cash", type=float)
     args = ap.parse_args()
@@ -242,6 +375,15 @@ def main():
     book = load_book()
     if args.cmd == "show":
         cmd_show(book, cfg)
+    elif args.cmd == "preview":
+        cmd_preview(book, args.id or die("give an order id"), args.broker or die("give --broker"))
+    elif args.cmd in ("send", "send-stop"):
+        cmd_send(book, cfg, args.id or die("give an order id"), args.broker or die("give --broker"),
+                 args.live, args.yes, "stop" if args.cmd == "send-stop" else "entry")
+    elif args.cmd == "record-exit":
+        if args.entry is None or args.exit is None:
+            die("give --entry and --exit fill prices")
+        cmd_record_exit(book, cfg, args.id or die("give an order id"), args.entry, args.exit, args.outcome)
     elif args.cmd == "approve":
         cmd_approve(book, cfg, args.id or die("give an order id"), args.yes)
     elif args.cmd == "sync":

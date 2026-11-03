@@ -18,7 +18,8 @@ def build_universe(source="nifty500"):
         out.append({"symbol": norm_symbol(sym),
                     "name": col(r, "Company Name", "NAME OF COMPANY", "Security Name"),
                     "series": col(r, "Series", "SERIES") or "EQ",
-                    "industry": col(r, "Industry")})
+                    "industry": col(r, "Industry"),
+                    "isin": col(r, "ISIN Code", "ISIN NUMBER", "ISIN")})
     uni = {"source": source, "updated": now().isoformat(timespec="minutes"), "symbols": out}
     write_state("universe.json", uni)
     return uni

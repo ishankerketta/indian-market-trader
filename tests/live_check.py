@@ -95,6 +95,10 @@ check("NSE announcements", lambda: nse_list(f"/api/corporate-announcements?index
 check("NSE board meetings", lambda: nse_list(f"/api/corporate-board-meetings?index=equities&symbol={urllib.parse.quote(SYM)}"))
 check("NSE insider (PIT), 7 days", pit)
 check("NSE insider (PIT), undated", lambda: nse_list("/api/corporates-pit?index=equities"))
+check("NSE live quote (circuits, ASM/GSM)", lambda: (lambda q: f"band {q.get('band')}, circuits {q.get('lower_circuit')}-{q.get('upper_circuit')}, surveillance {q.get('surveillance')}" if q else (_ for _ in ()).throw(RuntimeError("empty: NSE refused")))(data.nse_quote(SYM)))
+check("NSE holiday calendar", lambda: (lambda h: f"{len(h)} holidays; next {min((d for d in h if d > dt.date.today()), default='-')}" if h else (_ for _ in ()).throw(RuntimeError("empty")))(data.nse_holidays()))
+check("NSE all indices (sectors, breadth)", lambda: f"{len(data.all_indices())} indices")
+check("NSE FII/DII flows", lambda: "; ".join(f"{f['category']} {f['net']}" for f in data.fii_dii()))
 check("Reddit JSON", lambda: reddit("json"))
 check("Reddit RSS", lambda: reddit("rss"))
 for s in ("TATAMOTORS", "TMPV"):

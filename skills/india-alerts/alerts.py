@@ -16,9 +16,10 @@ import pathlib
 import sys
 import time
 
-sys.path.insert(0, str(pathlib.Path(__file__).resolve().parent.parent / "_shared"))
+_HERE = pathlib.Path(__file__).resolve().parent
+sys.path.insert(0, str(_HERE / "_shared" if (_HERE / "_shared").is_dir() else _HERE.parent / "_shared"))
 
-from core import at_today, die, now, read_state, write_state, norm_symbol  # noqa: E402
+from core import at_today, die, now, read_state, write_state, norm_symbol, parse_ts  # noqa: E402
 from data import DataError, by_day, chart, session_bars  # noqa: E402
 
 
@@ -84,7 +85,7 @@ def cmd_check(store, quiet=False):
             except DataError as e:
                 print(f"{sym}: no data ({e})")
                 cache[sym] = []
-        created = dt.datetime.fromisoformat(a["created"])
+        created = parse_ts(a["created"])
         since = [b for b in cache[sym] if b["dt"] + dt.timedelta(minutes=1) > created]
         for b in since:
             if (a["kind"] == "above" and b["h"] >= a["level"]) or (a["kind"] == "below" and b["l"] <= a["level"]):

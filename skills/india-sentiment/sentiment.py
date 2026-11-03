@@ -16,7 +16,8 @@ import datetime as dt
 import pathlib
 import sys
 
-sys.path.insert(0, str(pathlib.Path(__file__).resolve().parent.parent / "_shared"))
+_HERE = pathlib.Path(__file__).resolve().parent
+sys.path.insert(0, str(_HERE / "_shared" if (_HERE / "_shared").is_dir() else _HERE.parent / "_shared"))
 
 from core import die, load_config, now, read_state, write_state, norm_symbol  # noqa: E402
 from data import DataError, daily, google_news, reddit_search, yahoo_news  # noqa: E402

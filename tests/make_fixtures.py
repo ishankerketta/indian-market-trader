@@ -179,6 +179,44 @@ def make(out):
                                "permalink": f"/r/y/{i}", "created_utc": base - (2 + i * 2) * 86400}})
     Path(out, "reddit_TESTCO.json").write_text(json.dumps({"data": {"children": posts}}))
     Path(out, "reddit_FLATCO.json").write_text(json.dumps({"data": {"children": []}}))
+    # Indices for the market pulse (daily only)
+    for sym, base, seed, vol in (("NIFTY", 23000.0, 21, 0.008), ("BANKNIFTY", 51000.0, 22, 0.01),
+                                 ("SENSEX", 76000.0, 23, 0.008), ("INDIAVIX", 14.0, 24, 0.04)):
+        rng3 = random.Random(seed)
+        rows, p = [], base
+        for d in weekdays_back(TEST_DAY, 250):
+            o = p
+            c = o * (1 + rng3.gauss(0.0006 if sym != "INDIAVIX" else 0, vol))
+            rows.append((ts(d, 9, 15), round(o, 2), round(max(o, c) * 1.003, 2), round(min(o, c) * 0.997, 2),
+                         round(c, 2), 0))
+            p = c
+        Path(out, f"chart_{sym}_1d.json").write_text(json.dumps(yahoo(sym, rows, rows[-2][4])))
+    Path(out, "nse_allindices.json").write_text(json.dumps({"data": [
+        {"key": "BROAD MARKET INDICES", "index": "NIFTY 500", "last": 21500, "percentChange": 0.62,
+         "advances": "310", "declines": "180"},
+        {"key": "SECTORAL INDICES", "index": "NIFTY IT", "last": 36000, "percentChange": 1.8},
+        {"key": "SECTORAL INDICES", "index": "NIFTY BANK", "last": 51000, "percentChange": 0.4},
+        {"key": "SECTORAL INDICES", "index": "NIFTY PHARMA", "last": 22000, "percentChange": -0.9},
+        {"key": "SECTORAL INDICES", "index": "NIFTY METAL", "last": 9000, "percentChange": -1.4},
+        {"key": "SECTORAL INDICES", "index": "NIFTY AUTO", "last": 24000, "percentChange": 0.1}]}))
+    Path(out, "nse_fiidii.json").write_text(json.dumps([
+        {"category": "DII **", "date": "30-Oct-2026", "buyValue": "15,200.10", "sellValue": "12,900.40", "netValue": "2,299.70"},
+        {"category": "FII/FPI *", "date": "30-Oct-2026", "buyValue": "11,800.00", "sellValue": "13,450.25", "netValue": "-1,650.25"}]))
+    Path(out, "nse_holidays.json").write_text(json.dumps({"CM": [
+        {"tradingDate": "26-Jan-2026", "weekDay": "Monday", "description": "Republic Day"},
+        {"tradingDate": "10-Nov-2026", "weekDay": "Tuesday", "description": "Diwali Balipratipada (synthetic)"},
+        {"tradingDate": "25-Dec-2026", "weekDay": "Friday", "description": "Christmas"}]}))
+    Path(out, "nse_preopen_NIFTY.json").write_text(json.dumps({"data": [
+        {"metadata": {"symbol": "TESTCO", "iep": 1712.0, "pChange": 2.1, "previousClose": 1676.8, "finalQuantity": 50000}},
+        {"metadata": {"symbol": "FLATCO", "iep": 556.0, "pChange": -0.5, "previousClose": 558.8, "finalQuantity": 20000}}]}))
+    Path(out, "nse_quote_TESTCO.json").write_text(json.dumps({
+        "metadata": {"series": "EQ", "status": "Listed"}, "securityInfo": {"surveillance": {"surv": None, "desc": None}},
+        "priceInfo": {"lastPrice": 1718.7, "previousClose": 1708.4, "upperCP": "2050.05", "lowerCP": "1366.75",
+                      "pPriceBand": "20"}}))
+    Path(out, "nse_quote_T2TCO.json").write_text(json.dumps({
+        "metadata": {"series": "BE", "status": "Listed"},
+        "securityInfo": {"surveillance": {"surv": "ASM Stage I", "desc": "Long-term ASM"}},
+        "priceInfo": {"lastPrice": 104, "previousClose": 100, "upperCP": "105.00", "lowerCP": "95.00", "pPriceBand": "5"}}))
     Path(out, "nse_pit.json").write_text(json.dumps({"data": [
         {"symbol": "TESTCO", "company": "Test Company Limited", "acqName": "Promoter Holdings Pvt Ltd",
          "personCategory": "Promoter Group", "secAcq": "100000", "secVal": "100400000",

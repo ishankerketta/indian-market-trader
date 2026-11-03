@@ -48,8 +48,12 @@ DEFAULT_CONFIG = {
     "entry_buffer_pct": 0.10,      # limit price = trigger + this %
     "order_type": "LIMIT",         # many brokers block market orders via API
 
-    # Charges: see costs.py. "discount" = 0.03% or Rs 20 per order, whichever is lower
+    # Charges: see costs.py. zerodha | angelone | dhan | upstox | groww | fyers | discount (0.03%/Rs 20)
     "broker_profile": "discount",
+
+    # SEBI insider-trading guard: companies where you are a designated person or hold UPSI.
+    # The Risk Manager always blocks these. Keep this list current.
+    "pit_restricted": [],
     "rates": {},                   # override any statutory rate here, e.g. {"stt_sell": 0.00025}
 
     # Sentiment
@@ -102,6 +106,12 @@ def now():
         t = dt.datetime.fromisoformat(fake)
         return t if t.tzinfo else t.replace(tzinfo=IST)
     return dt.datetime.now(IST)
+
+
+def parse_ts(s):
+    """ISO timestamp -> aware datetime; a timestamp without a zone (e.g. hand-edited) is read as IST."""
+    t = dt.datetime.fromisoformat(s)
+    return t if t.tzinfo else t.replace(tzinfo=IST)
 
 
 def parse_hhmm(s):

@@ -1,7 +1,8 @@
 #!/usr/bin/env python3
 """Charges Calculator: what an intraday round trip really costs on NSE.
 
-  charges.py --buy 2450 --sell 2470 --qty 40 [--profile discount|flat20|zero|full_service]
+  charges.py --buy 2450 --sell 2470 --qty 40 [--profile zerodha|angelone|dhan|upstox|groww|fyers|...]
+  charges.py --buy 2450 --sell 2470 --qty 40 --compare      every broker side by side
   charges.py --buy 2450 --qty 40 --breakeven      lowest sell price that covers all charges
   charges.py --from-plan                           costs at the plan's stop and target
 """
@@ -10,10 +11,11 @@ import math
 import pathlib
 import sys
 
-sys.path.insert(0, str(pathlib.Path(__file__).resolve().parent.parent / "_shared"))
+_HERE = pathlib.Path(__file__).resolve().parent
+sys.path.insert(0, str(_HERE / "_shared" if (_HERE / "_shared").is_dir() else _HERE.parent / "_shared"))
 
 from core import die, fmt_inr, load_config, read_state  # noqa: E402
-from costs import PROFILES, breakeven_sell, intraday_charges  # noqa: E402
+from costs import BROKERS, PROFILES, RATES_AS_OF, breakeven_sell, intraday_charges, rates_age_days  # noqa: E402
 
 ROWS = [("brokerage", "Brokerage"), ("stt", "STT (0.025% sell)"), ("exchange", "NSE transaction"),
         ("ipft", "IPFT"), ("sebi", "SEBI fee"), ("stamp", "Stamp duty (buy)"), ("gst", "GST 18%")]
@@ -35,6 +37,7 @@ def main():
     ap.add_argument("--qty", type=int)
     ap.add_argument("--profile", choices=list(PROFILES))
     ap.add_argument("--breakeven", action="store_true")
+    ap.add_argument("--compare", action="store_true", help="compare the main Indian brokers")
     ap.add_argument("--from-plan", action="store_true")
     args = ap.parse_args()
     cfg = load_config()
@@ -55,6 +58,22 @@ def main():
         return
     if args.buy is None or not args.qty:
         die("give --buy and --qty (and --sell, or --breakeven)")
+    age = rates_age_days()
+    if age > 120:
+        print(f"note: rates were last checked {RATES_AS_OF} ({age} days ago); budgets and circulars may have changed them.")
+    if args.compare:
+        sell = args.sell if args.sell is not None else args.buy
+        print(f"Buy {args.qty} at {args.buy}, sell at {sell}, NSE intraday (rates as of {RATES_AS_OF}):")
+        print(f"  {'broker':<12}{'brokerage':>12}{'all charges':>14}{'net P&L':>14}{'breakeven':>11}")
+        rows = []
+        for b in BROKERS:
+            c = intraday_charges(args.buy, sell, args.qty, b, rates)
+            rows.append((c["total"], b, c, breakeven_sell(args.buy, args.qty, b, rates)))
+        for _, b, c, be in sorted(rows):
+            print(f"  {PROFILES[b]['label'].split(' (')[0]:<12}{fmt_inr(c['brokerage']):>12}{fmt_inr(c['total']):>14}"
+                  f"{fmt_inr(c['net_pnl']):>14}{be:>11.2f}")
+        print("Statutory charges (STT, exchange, SEBI, stamp, GST on them) are the same at every broker.")
+        return
     if args.breakeven or args.sell is None:
         be = breakeven_sell(args.buy, args.qty, profile, rates)
         print(f"Buy {args.qty} at {args.buy}: breakeven sell {be} "
@@ -63,7 +82,7 @@ def main():
             return
     table(intraday_charges(args.buy, args.sell, args.qty, profile, rates),
           f"Buy {args.qty} at {args.buy}, sell at {args.sell} ({profile} brokerage):")
-    print("Rates are 2026 statutory figures; check your contract note and set overrides in trader/config.json.")
+    print(f"Rates as of {RATES_AS_OF}; check your contract note and set overrides in trader/config.json.")
 
 
 if __name__ == "__main__":

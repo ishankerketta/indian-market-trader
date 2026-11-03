@@ -248,6 +248,105 @@ def nse_json(path, fixture):
     return json.loads(raw)
 
 
+def nse_quote(symbol):
+    """Live NSE quote: price, circuit limits, price band, series, surveillance (ASM/GSM).
+
+    Returns {} when NSE refuses; callers fall back to sec_list.csv bands.
+    """
+    try:
+        j = nse_json(f"/api/quote-equity?symbol={urllib.parse.quote(symbol)}", f"nse_quote_{_fixture_key(symbol)}.json")
+    except (DataError, ValueError):
+        return {}
+    pi = j.get("priceInfo") or {}
+    si = j.get("securityInfo") or {}
+    md = j.get("metadata") or {}
+    surv = si.get("surveillance") or {}
+
+    def num(x):
+        try:
+            return float(str(x).replace(",", ""))
+        except (TypeError, ValueError):
+            return None
+    return {"last": num(pi.get("lastPrice")), "prev_close": num(pi.get("previousClose")),
+            "upper_circuit": num(pi.get("upperCP")), "lower_circuit": num(pi.get("lowerCP")),
+            "band": pi.get("pPriceBand"), "series": md.get("series") or si.get("series") or "",
+            "surveillance": surv.get("surv") or None, "surveillance_desc": surv.get("desc") or "",
+            "status": md.get("status") or ""}
+
+
+def nse_holidays(year=None):
+    """NSE equity trading holidays as {date: description}, cached per year in trader/holidays.json."""
+    from core import read_state, write_state
+    year = year or dt.date.today().year
+    cache = read_state("holidays.json") or {}
+    if str(year) in cache:
+        return {dt.date.fromisoformat(k): v for k, v in cache[str(year)].items()}
+    out = {}
+    try:
+        j = nse_json("/api/holiday-master?type=trading", "nse_holidays.json")
+        for h in (j.get("CM") or []):
+            try:
+                d = dt.datetime.strptime(h.get("tradingDate", ""), "%d-%b-%Y").date()
+            except ValueError:
+                continue
+            out[d] = h.get("description", "holiday")
+    except (DataError, ValueError, AttributeError):
+        return {}
+    if out:
+        cache[str(year)] = {d.isoformat(): v for d, v in out.items() if d.year == year}
+        write_state("holidays.json", cache)
+    return out
+
+
+def market_day(d):
+    """(is_trading_day, reason). Weekends and NSE holidays; unknown holidays count as trading days."""
+    if d.weekday() >= 5:
+        return False, d.strftime("%A")
+    hol = nse_holidays(d.year)
+    if d in hol:
+        return False, f"NSE holiday: {hol[d]}"
+    return True, ""
+
+
+def all_indices():
+    """NSE index snapshot: last, % change, and advances/declines where NSE gives them."""
+    j = nse_json("/api/allIndices", "nse_allindices.json")
+    out = []
+    for r in j.get("data", []):
+        out.append({"index": r.get("index") or r.get("indexSymbol"), "last": r.get("last"),
+                    "change_pct": r.get("percentChange"), "advances": r.get("advances"),
+                    "declines": r.get("declines"), "key": r.get("key", "")})
+    return out
+
+
+def fii_dii():
+    """Latest FII/FPI and DII cash-market net buy/sell (INR crore) from NSE."""
+    j = nse_json("/api/fiidiiTradeReact", "nse_fiidii.json")
+    rows = j if isinstance(j, list) else j.get("data", [])
+    out = []
+    for r in rows:
+        def num(x):
+            try:
+                return float(str(x).replace(",", ""))
+            except (TypeError, ValueError):
+                return None
+        out.append({"category": r.get("category", ""), "date": r.get("date", ""),
+                    "buy": num(r.get("buyValue")), "sell": num(r.get("sellValue")), "net": num(r.get("netValue"))})
+    return out
+
+
+def preopen(key="NIFTY"):
+    """NSE pre-open session (09:00-09:08): indicative open vs previous close for an index's stocks."""
+    j = nse_json(f"/api/market-data-pre-open?key={key}", f"nse_preopen_{key}.json")
+    out = []
+    for r in j.get("data", []):
+        m = r.get("metadata") or {}
+        out.append({"symbol": m.get("symbol"), "iep": m.get("iep") or m.get("lastPrice"),
+                    "change_pct": m.get("pChange"), "prev_close": m.get("previousClose"),
+                    "value_cr": (m.get("finalQuantity") or 0) * (m.get("iep") or 0) / 1e7})
+    return out
+
+
 # ---------------------------------------------------------------- News and social
 
 def yahoo_news(symbol, count=20):

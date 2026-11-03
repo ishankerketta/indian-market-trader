@@ -11,11 +11,13 @@ import datetime as dt
 import pathlib
 import sys
 
-sys.path.insert(0, str(pathlib.Path(__file__).resolve().parent.parent / "_shared"))
+_HERE = pathlib.Path(__file__).resolve().parent
+sys.path.insert(0, str(_HERE / "_shared" if (_HERE / "_shared").is_dir() else _HERE.parent / "_shared"))
 
 from core import at_today, die, fmt_inr, load_config, now, read_state, write_state  # noqa: E402
 from data import DataError, daily  # noqa: E402
-from indicators import band_limits  # noqa: E402
+from data import market_day, nse_quote  # noqa: E402
+from indicators import band_limits, parse_band  # noqa: E402
 from sr import all_lines  # noqa: E402
 from universe import load_bands  # noqa: E402
 
@@ -70,7 +72,23 @@ def check_order(o, cfg, ctx):
     if o.get("leverage", 1) > 1:
         add("leverage allowed", cfg["use_leverage"], f"order uses {o['leverage']}x")
 
+    # SEBI insider-trading guard (idea from nse-day-trader-skill, MIT): never trade your own UPSI names
+    restricted = {x.strip().upper() for x in cfg.get("pit_restricted", [])}
+    add("SEBI insider guard", o["symbol"] not in restricted,
+        "on your pit_restricted list: you are a designated person or insider here" if o["symbol"] in restricted
+        else "not on your insider list")
+    trading, why = ctx.get("market_day", (True, ""))
+    add("market open today", trading, why or "trading day")
+
     info = ctx["bands"].get(o["symbol"])
+    q = ctx.get("quote") or {}
+    if q.get("series"):
+        # Live NSE quote beats the morning security list: series, band and exact circuit prices
+        info = {"series": q["series"], "band": parse_band(q.get("band")) if q.get("band") else (info or {}).get("band")}
+    if q.get("surveillance"):
+        add("ASM/GSM surveillance", False,
+            f"{q['surveillance']} {q.get('surveillance_desc', '')}".strip()
+            + "; surveillance stocks often need 100% margin and many brokers block intraday in them")
     if info is None:
         add("series and circuit band", True, "not found in NSE's security list today; check the band yourself", "warn")
         res[-1]["result"] = "WARN"
@@ -80,9 +98,11 @@ def check_order(o, cfg, ctx):
         band = info["band"]
         add("circuit band", band is None or band >= cfg["min_band_pct"],
             f"{'no band (F&O stock)' if band is None else str(band) + '% band'}; minimum {cfg['min_band_pct']}%")
-        pc = ctx["prev_close"]
-        if band and pc:
+        pc = q.get("prev_close") or ctx["prev_close"]
+        up, dn = (q.get("upper_circuit"), q.get("lower_circuit")) if q.get("upper_circuit") else (None, None)
+        if up is None and band and pc:
             up, dn = band_limits(pc, band)
+        if up and dn and pc:
             buf = cfg["circuit_buffer_pct"] / 100
             if long_:
                 ok = o["target"] < up * (1 - buf) and o["limit"] < up * (1 - buf)
@@ -144,7 +164,8 @@ def main():
         ctx = {"now": t, "stats": today_stats(ledger, [x for x in orders if x is not o], t.date().isoformat()),
                "cash": ledger.get("cash") if (ledger and cfg["paper"]) else None,
                "bands": bands, "prev_close": prev_close, "news": news, "sentiment": sentiment,
-               "levels": read_state("levels.json") or {}}
+               "levels": read_state("levels.json") or {}, "quote": nse_quote(o["symbol"]),
+               "market_day": market_day(t.date())}
         checks = check_order(o, cfg, ctx)
         blocked = [c for c in checks if c["result"] == "BLOCK"]
         o["status"] = "BLOCKED" if blocked else "READY"

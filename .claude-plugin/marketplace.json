@@ -7,7 +7,7 @@
     {
       "name": "indian-market-trader",
       "source": "./",
-      "description": "Intraday trading skills for NSE India: scanner, news, sentiment, levels, entry, exit, time machine, charges, budget, risk, paper broker, alerts, bulk/block/insider deals."
+      "description": "Intraday trading skills for NSE India: pulse, scanner, levels, news, sentiment, entry, exit, time machine, charges, budget, risk, broker (Angel One, Dhan, Zerodha, Upstox, FYERS, Groww, OpenAlgo), alerts, deals, journal."
     }
   ]
 }

@@ -11,7 +11,7 @@ python3 <skill-dir>/check.py [--id ORDER_ID]
 
 Marks each checked order `READY` or `BLOCKED` in `trader/orders.json` and writes `trader/risk.json`.
 
-**Blocks**: loss at the stop over `max_loss_per_trade`; today's losses plus open risk plus this trade over `daily_loss_limit`; `max_trades_per_day` reached; net reward:risk under `min_reward_risk`; outside the entry window; under 20 minutes to flat-by; position over `max_position_pct`; not enough cash; BE/BZ (trade-to-trade) series; circuit band tighter than `min_band_pct` (2% and 5% band stocks); target or entry within `circuit_buffer_pct` of the circuit limit; shorts or leverage when they are switched off.
+**Blocks**: a stock on the user's `pit_restricted` list (SEBI insider-trading guard: companies where they are a designated person or hold unpublished price-sensitive information); NSE closed today (weekend or holiday); a stock under ASM/GSM surveillance (live NSE quote); loss at the stop over `max_loss_per_trade`; today's losses plus open risk plus this trade over `daily_loss_limit`; `max_trades_per_day` reached; net reward:risk under `min_reward_risk`; outside the entry window; under 20 minutes to flat-by; position over `max_position_pct`; not enough cash; BE/BZ (trade-to-trade) series; circuit band tighter than `min_band_pct` (2% and 5% band stocks); target or entry within `circuit_buffer_pct` of the circuit limit (exact circuit prices from NSE's live quote, else computed from the band); shorts or leverage when they are switched off.
 
 **Warnings** (shown, not blocking): results or a board meeting within 3 days (`/india-news`), elevated or high pump risk (`/india-sentiment`), a support/resistance line between entry and target (`/india-levels`), stock not found in NSE's security list.
 

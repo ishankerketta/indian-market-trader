@@ -17,7 +17,8 @@ import html
 import pathlib
 import sys
 
-sys.path.insert(0, str(pathlib.Path(__file__).resolve().parent.parent / "_shared"))
+_HERE = pathlib.Path(__file__).resolve().parent
+sys.path.insert(0, str(_HERE / "_shared" if (_HERE / "_shared").is_dir() else _HERE.parent / "_shared"))
 
 from core import die, now, read_state, state_path, write_state, norm_symbol, fmt_inr  # noqa: E402
 from data import DataError, by_day, chart, session_bars  # noqa: E402

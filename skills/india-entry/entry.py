@@ -11,10 +11,11 @@ import pathlib
 import sys
 import time
 
-sys.path.insert(0, str(pathlib.Path(__file__).resolve().parent.parent / "_shared"))
+_HERE = pathlib.Path(__file__).resolve().parent
+sys.path.insert(0, str(_HERE / "_shared" if (_HERE / "_shared").is_dir() else _HERE.parent / "_shared"))
 
 from core import at_today, die, load_config, now, write_state, norm_symbol  # noqa: E402
-from data import DataError, by_day, chart, session_bars  # noqa: E402
+from data import DataError, by_day, chart, market_day, session_bars  # noqa: E402
 from indicators import bar_minutes, completed, opening_range, orb_trigger  # noqa: E402
 
 
@@ -26,7 +27,10 @@ def check(symbol, side, cfg, at):
     base = {"symbol": symbol, "setup": "orb", "side": side, "checked_at": at.isoformat(timespec="minutes"),
             "orb_minutes": cfg["orb_minutes"], "entry_window": cfg["entry_window"]}
     if not tb:
-        return {**base, "status": "waiting", "reason": "no bars for today yet (pre-open, holiday or data lag)"}
+        trading, why = market_day(today)
+        if not trading:
+            return {**base, "status": "expired", "reason": f"market closed today ({why})"}
+        return {**base, "status": "waiting", "reason": "no bars for today yet (pre-open or data lag)"}
     m = bar_minutes(tb)
     done = completed(tb, at, m)
     orr = opening_range(done, cfg["orb_minutes"]) if done else None

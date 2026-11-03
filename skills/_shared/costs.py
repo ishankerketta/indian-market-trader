@@ -22,23 +22,47 @@ DEFAULT_RATES = {
     "gst": 0.18,
 }
 
-# Brokerage per executed order
+RATES_AS_OF = "2026-11-03"   # statutory rates above and broker profiles below last checked
+
+# Brokerage per executed order, equity intraday. Broker profiles from each broker's pricing page,
+# via the MIT-licensed claude-trading-skills-india (Shubham Kumar), rates as of Oct 2026.
 PROFILES = {
-    "discount": {"pct": 0.0003, "cap": 20.0},   # 0.03% or Rs 20, whichever is lower
-    "flat20": {"pct": None, "flat": 20.0},
-    "zero": {"pct": None, "flat": 0.0},
-    "full_service": {"pct": 0.0005, "cap": None},
+    "zerodha": {"pct": 0.0003, "cap": 20.0, "label": "Zerodha"},
+    "dhan": {"pct": 0.0003, "cap": 20.0, "label": "Dhan"},
+    "fyers": {"pct": 0.0003, "cap": 20.0, "label": "FYERS (verify on fyers.in/pricing)"},
+    "angelone": {"pct": 0.001, "cap": 20.0, "min": 5.0, "label": "Angel One"},
+    "groww": {"pct": 0.001, "cap": 20.0, "min": 5.0, "label": "Groww"},
+    "upstox": {"pct": 0.001, "cap": 20.0, "label": "Upstox"},
+    "discount": {"pct": 0.0003, "cap": 20.0, "label": "Generic discount (0.03% or Rs 20)"},
+    "flat20": {"pct": None, "flat": 20.0, "label": "Flat Rs 20"},
+    "zero": {"pct": None, "flat": 0.0, "label": "Zero brokerage"},
+    "full_service": {"pct": 0.0005, "cap": None, "label": "Full-service 0.05%"},
 }
+BROKERS = ("zerodha", "angelone", "dhan", "upstox", "groww", "fyers")
+CASH_BROKERAGE_CAP = 0.025   # exchanges cap cash-segment brokerage at 2.5% of order value
 
 
 def brokerage(value, profile="discount"):
     p = PROFILES.get(profile)
     if p is None:
         raise ValueError(f"unknown broker_profile {profile!r}; use one of {', '.join(PROFILES)}")
+    if value <= 0:
+        return 0.0
     if p.get("pct") is None:
-        return p.get("flat", 0.0) if value > 0 else 0.0
-    b = value * p["pct"]
-    return min(b, p["cap"]) if p.get("cap") is not None else b
+        b = p.get("flat", 0.0)
+    else:
+        b = value * p["pct"]
+        if p.get("cap") is not None:
+            b = min(b, p["cap"])
+        if b > 0 and p.get("min"):
+            b = max(b, p["min"])
+    return min(b, value * CASH_BROKERAGE_CAP)
+
+
+def rates_age_days(today=None):
+    import datetime as _dt
+    t = today or _dt.date.today()
+    return (t - _dt.date.fromisoformat(RATES_AS_OF)).days
 
 
 def intraday_charges(buy_price, sell_price, qty, profile="discount", rates=None):
