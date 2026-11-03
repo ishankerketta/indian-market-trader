@@ -44,6 +44,7 @@ Pick one:
 | Where | How easy | What works |
 |---|---|---|
 | **A. Claude Code** (recommended) | Easy, a few commands | Everything, including your broker |
+| **A2. Claude desktop app** | Easiest, a few clicks | Same plugin, no commands |
 | **B. Claude app** (claude.ai or desktop) | Easiest, no commands | Analysis and paper trading. No broker connection |
 | **C. ChatGPT or Codex** | Easy | Should work, not tested yet |
 
@@ -67,6 +68,16 @@ Claude Code needs a paid Claude plan (Pro, Max, Team or Enterprise).
    /plugin install indian-market-trader@indian-market-trader
    ```
 4. **Done.** Ask your first question (see Step 3).
+
+#### A2. Claude desktop app (Mac or Windows): no commands needed
+
+1. Open **Settings → Customize → Plugins**.
+2. Click **+ Add** (top right) → **Add marketplace**.
+3. Paste `ishankerketta/indian-market-trader` and confirm.
+4. The plugin **Indian market trader** appears. Add it. It says "installed and ready to use".
+5. Open a **New** session and ask: "How's the market looking today?"
+
+Tested on the Mac desktop app.
 
 #### B. Claude app (claude.ai, or the desktop app)
 
