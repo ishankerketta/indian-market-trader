@@ -1,0 +1,59 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="430" viewBox="0 0 1200 430" role="img" aria-labelledby="t d">
+  <title id="t">How a trade flows</title>
+  <desc id="d">Before the open: pulse, scanner, news, sentiment. Pick a trade: scanner breakouts, levels, entry, exit, time machine, budget, risk, broker. While it is open: alerts. After the close: journal.</desc>
+  <defs><marker id="a" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="8" markerHeight="8" orient="auto"><path d="M0 0L10 5L0 10z" fill="#7a8ba3"/></marker></defs>
+  <rect width="1200" height="430" rx="18" fill="#f4f7fb"/>
+  <g font-family="-apple-system,Segoe UI,Helvetica,Arial,sans-serif">
+    <text x="600" y="48" text-anchor="middle" font-size="26" font-weight="700" fill="#0f1b2d">How a trade flows</text>
+    <text x="600" y="76" text-anchor="middle" font-size="16" fill="#5b6b80">Each step reads what the one before it saved. Nothing reaches your broker without your yes.</text>
+
+    <g>
+      <rect x="30" y="110" width="255" height="290" rx="14" fill="#ffffff" stroke="#d3dce8"/>
+      <text x="157" y="142" text-anchor="middle" font-size="18" font-weight="700" fill="#0f1b2d">1. Before the open</text>
+      <text x="157" y="164" text-anchor="middle" font-size="13" fill="#6b7a90">by 9:15</text>
+      <g font-size="15" fill="#1c3a5e" font-weight="600">
+        <rect x="52" y="182" width="211" height="38" rx="9" fill="#e6f0fc"/><text x="157" y="207" text-anchor="middle">pulse · market mood</text>
+        <rect x="52" y="230" width="211" height="38" rx="9" fill="#e6f0fc"/><text x="157" y="255" text-anchor="middle">scanner · watchlist</text>
+        <rect x="52" y="278" width="211" height="38" rx="9" fill="#e6f0fc"/><text x="157" y="303" text-anchor="middle">news · sentiment</text>
+        <rect x="52" y="326" width="211" height="38" rx="9" fill="#e6f0fc"/><text x="157" y="351" text-anchor="middle">deals · big investors</text>
+      </g>
+    </g>
+
+    <g>
+      <rect x="315" y="110" width="570" height="290" rx="14" fill="#ffffff" stroke="#d3dce8"/>
+      <text x="600" y="142" text-anchor="middle" font-size="18" font-weight="700" fill="#0f1b2d">2. Pick one trade</text>
+      <text x="600" y="164" text-anchor="middle" font-size="13" fill="#6b7a90">after 9:30, once the opening range is set</text>
+      <g font-size="15" font-weight="600" fill="#1c3a5e">
+        <rect x="337" y="190" width="120" height="44" rx="9" fill="#e6f0fc"/><text x="397" y="217" text-anchor="middle">breakouts</text>
+        <rect x="473" y="190" width="120" height="44" rx="9" fill="#e6f0fc"/><text x="533" y="217" text-anchor="middle">levels</text>
+        <rect x="609" y="190" width="120" height="44" rx="9" fill="#e6f0fc"/><text x="669" y="217" text-anchor="middle">entry</text>
+        <rect x="745" y="190" width="120" height="44" rx="9" fill="#e6f0fc"/><text x="805" y="217" text-anchor="middle">exit plan</text>
+        <rect x="337" y="262" width="120" height="44" rx="9" fill="#fdf1dc"/><text x="397" y="289" text-anchor="middle" fill="#7a4a00">odds</text>
+        <rect x="473" y="262" width="120" height="44" rx="9" fill="#fdf1dc"/><text x="533" y="289" text-anchor="middle" fill="#7a4a00">charges</text>
+        <rect x="609" y="262" width="120" height="44" rx="9" fill="#fdf1dc"/><text x="669" y="289" text-anchor="middle" fill="#7a4a00">shares</text>
+        <rect x="745" y="262" width="120" height="44" rx="9" fill="#fde6e4"/><text x="805" y="289" text-anchor="middle" fill="#8a1f17">risk check</text>
+      </g>
+      <g stroke="#7a8ba3" stroke-width="2" fill="none" marker-end="url(#a)">
+        <path d="M457 212H469"/><path d="M593 212H605"/><path d="M729 212H741"/>
+        <path d="M805 234V250Q805 256 799 256H403Q397 256 397 262"/>
+        <path d="M457 284H469"/><path d="M593 284H605"/><path d="M729 284H741"/>
+      </g>
+      <rect x="337" y="330" width="528" height="48" rx="10" fill="#0f1b2d"/>
+      <text x="601" y="360" text-anchor="middle" font-size="16" font-weight="600" fill="#ffffff">broker · you type yes · paper ledger first</text>
+    </g>
+
+    <g>
+      <rect x="915" y="110" width="255" height="132" rx="14" fill="#ffffff" stroke="#d3dce8"/>
+      <text x="1042" y="142" text-anchor="middle" font-size="18" font-weight="700" fill="#0f1b2d">3. While it's open</text>
+      <rect x="937" y="170" width="211" height="46" rx="9" fill="#e6f0fc"/>
+      <text x="1042" y="198" text-anchor="middle" font-size="15" font-weight="600" fill="#1c3a5e">alerts · stop, target, 3:10</text>
+      <rect x="915" y="262" width="255" height="138" rx="14" fill="#ffffff" stroke="#d3dce8"/>
+      <text x="1042" y="294" text-anchor="middle" font-size="18" font-weight="700" fill="#0f1b2d">4. After the close</text>
+      <rect x="937" y="322" width="211" height="46" rx="9" fill="#e4f5e9"/>
+      <text x="1042" y="350" text-anchor="middle" font-size="15" font-weight="600" fill="#15602a">journal · are you ready?</text>
+    </g>
+    <g stroke="#7a8ba3" stroke-width="2" fill="none" marker-end="url(#a)">
+      <path d="M285 255H311"/><path d="M885 255H911"/>
+    </g>
+  </g>
+</svg>

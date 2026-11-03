@@ -1,0 +1,27 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="300" viewBox="0 0 1200 300" role="img" aria-labelledby="t d">
+  <title id="t">Indian Market Trader</title>
+  <desc id="d">A free AI assistant for intraday trading on the Indian stock market (NSE)</desc>
+  <rect width="1200" height="300" rx="18" fill="#0f1b2d"/>
+  <g stroke="#1f3350" stroke-width="1">
+    <line x1="0" y1="75" x2="1200" y2="75"/><line x1="0" y1="150" x2="1200" y2="150"/><line x1="0" y1="225" x2="1200" y2="225"/>
+  </g>
+  <g transform="translate(790,52)">
+    <g stroke-width="3" stroke-linecap="round">
+      <line x1="20" y1="150" x2="20" y2="200" stroke="#e5534b"/><rect x="10" y="165" width="20" height="24" fill="#e5534b" stroke="none" rx="2"/>
+      <line x1="70" y1="120" x2="70" y2="185" stroke="#2ea043"/><rect x="60" y="135" width="20" height="38" fill="#2ea043" stroke="none" rx="2"/>
+      <line x1="120" y1="100" x2="120" y2="160" stroke="#2ea043"/><rect x="110" y="112" width="20" height="36" fill="#2ea043" stroke="none" rx="2"/>
+      <line x1="170" y1="80" x2="170" y2="150" stroke="#e5534b"/><rect x="160" y="95" width="20" height="40" fill="#e5534b" stroke="none" rx="2"/>
+      <line x1="220" y1="40" x2="220" y2="125" stroke="#2ea043"/><rect x="210" y="55" width="20" height="55" fill="#2ea043" stroke="none" rx="2"/>
+      <line x1="270" y1="18" x2="270" y2="100" stroke="#2ea043"/><rect x="260" y="30" width="20" height="55" fill="#2ea043" stroke="none" rx="2"/>
+    </g>
+    <line x1="0" y1="92" x2="320" y2="92" stroke="#58a6ff" stroke-width="2" stroke-dasharray="7 6"/>
+    <text x="322" y="97" font-family="-apple-system,Segoe UI,Helvetica,Arial,sans-serif" font-size="14" fill="#58a6ff" dx="-4" text-anchor="end" dy="-8">range high</text>
+  </g>
+  <text x="56" y="116" font-family="-apple-system,Segoe UI,Helvetica,Arial,sans-serif" font-size="54" font-weight="700" fill="#ffffff">Indian Market Trader</text>
+  <text x="58" y="160" font-family="-apple-system,Segoe UI,Helvetica,Arial,sans-serif" font-size="23" fill="#b6c4d9">A free AI assistant for intraday trading on the NSE</text>
+  <g font-family="-apple-system,Segoe UI,Helvetica,Arial,sans-serif" font-size="17" font-weight="600">
+    <rect x="58" y="198" width="218" height="38" rx="19" fill="#17304f"/><text x="167" y="223" text-anchor="middle" fill="#9cc7ff">Paper trading first</text>
+    <rect x="290" y="198" width="234" height="38" rx="19" fill="#17304f"/><text x="407" y="223" text-anchor="middle" fill="#9cc7ff">Every charge counted</text>
+    <rect x="538" y="198" width="196" height="38" rx="19" fill="#17304f"/><text x="636" y="223" text-anchor="middle" fill="#9cc7ff">Your yes, always</text>
+  </g>
+</svg>

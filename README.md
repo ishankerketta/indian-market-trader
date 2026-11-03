@@ -1,12 +1,14 @@
 # Indian Market Trader
 
+<p align="center"><img src="docs/banner.svg" alt="Indian Market Trader: a free AI assistant for intraday trading on the NSE" width="100%"></p>
+
 **A free AI assistant for intraday trading on the Indian stock market (NSE).**
 
 You ask Claude a question in plain English, Hindi or Hinglish, like *"aaj market kaisa hai?"* or *"show me RELIANCE's levels"*, and it does the homework a careful trader would do: it checks the market, finds stocks that are breaking out, reads the news, works out where to get in and out, counts every rupee of charges, and tells you honestly whether the trade is worth it.
 
 It practises with pretend money (paper trading) by default. **It never places a real order unless you say yes.**
 
-> **Beta.** Checked live on NSE data from a Mac on 3 Nov 2026: the market pulse, the daily scan, the opening-range (ORB) scan, entry check, exit plan and the Time Machine. Angel One login works on a real account. Placing real orders, the other brokers, and Windows are not tested yet. Start with pretend money. Not investment advice: see [Please read](#please-read).
+> **Beta.** Checked live on real NSE data from a Mac: the market pulse, the daily and opening-range scans, entry check, exit plan and the Time Machine. Angel One login works on a real account. Placing real orders, the other brokers, and Windows are not tested yet. Start with pretend money. Not investment advice: see [Please read](#please-read).
 
 ---
 
@@ -124,25 +126,125 @@ The first time you plan a trade, Claude asks for your capital, your loss limits 
 | During the trade | "Watch it" | Alerts at the stop, the target and 3:10 pm |
 | After 3:30 | "How did I do?" | Journal: wins, losses, charges, and whether you're ready for real money |
 
+<p align="center"><img src="docs/flow.svg" alt="How a trade flows: before the open (pulse, scanner, news, sentiment), pick one trade (breakouts, levels, entry, exit plan, odds, charges, shares, risk check, broker), while it is open (alerts), after the close (journal)" width="100%"></p>
+
 ## The 15 skills
 
-| Skill | In plain words |
-|---|---|
-| `india-pulse` | How's the market today? |
-| `india-scanner` | Which stocks are breaking out? |
-| `india-levels` | Where are the important price lines? |
-| `india-news` | What's the news on this stock? |
-| `india-sentiment` | What's social media saying, and is it a pump? |
-| `india-deals` | Are big investors buying or selling? (bulk and block deals) |
-| `india-entry` | Is it time to buy, or too late? |
-| `india-exit` | Where should the stop-loss and target go? |
-| `india-timemachine` | What are the odds this works today? |
-| `india-charges` | How much will STT, brokerage and GST cost? |
-| `india-budget` | How many shares should I buy? |
-| `india-risk` | Is this trade allowed by my rules? PASS or BLOCK |
-| `india-broker` | Place the order (only after your yes) |
-| `india-alerts` | Tell me when the price hits my stop or target |
-| `india-journal` | How am I doing, and am I ready for real money? |
+| Skill | In plain words | Try asking |
+|---|---|---|
+| `india-pulse` | How's the market today? | "How's the market today?" · "aaj market kaisa hai?" |
+| `india-scanner` | Which stocks are breaking out? | "Make my watchlist" · "Any breakouts?" |
+| `india-levels` | Where are the important price lines? | "Show me the levels for TCS" · "Levels for NIFTY" |
+| `india-news` | What's the news on this stock? | "Any news on RELIANCE?" |
+| `india-sentiment` | What's social media saying, and is it a pump? | "What is Reddit saying about ITC?" |
+| `india-deals` | Are big investors buying or selling? | "Any bulk deals today?" |
+| `india-entry` | Is it time to buy, or too late? | "Is it too late to enter TCS?" |
+| `india-exit` | Where should the stop-loss and target go? | "Plan the stop and target for TCS" |
+| `india-timemachine` | What are the odds this works today? | "What are the odds on this trade?" |
+| `india-charges` | How much will STT, brokerage and GST cost? | "Charges for buying 30 at 300 and selling at 306?" |
+| `india-budget` | How many shares should I buy? | "How many shares with ₹500 maximum loss?" |
+| `india-risk` | Is this trade allowed by my rules? PASS or BLOCK | "Is this trade allowed?" |
+| `india-broker` | Place the order (only after your yes) | "Place it on paper" · "Show my Angel One positions" |
+| `india-alerts` | Tell me when the price hits my stop or target | "Alert me at the stop and the target" |
+| `india-journal` | How am I doing, and am I ready for real money? | "How am I doing?" |
+
+## Example: one trade, step by step
+
+This is one full trade on **TESTCO**, a made-up company in the test data that ships with the project, so you can see what each step says. The numbers are for illustration only. You ask in plain words and Claude runs the matching step; the output below is what it reads.
+
+Asking **"Show me the levels for TESTCO"** also draws a chart like this and saves it as a web page you can open:
+
+<p align="center"><img src="docs/levels-example.png" alt="Levels chart for TESTCO: price chart with support and resistance lines and a table of levels" width="90%"></p>
+
+**1. "Any breakouts?"** (after 9:30)
+
+```
+Mon 02 Nov 2026 09:41 IST: 1 of 2 stocks have closed a 5-minute bar beyond their 15-minute opening range (0 fetch errors).
+Still above their range now: 1. Fell back inside (breakout failed): 0.
+symbol        side      OR low   OR high  trigger trig close  beyond%      last  rvol   day%  status
+TESTCO        long     1704.78   1707.31    09:35    1707.63     0.02   1718.72  0.98   0.60  holding
+```
+
+How to read it: the opening range is the high and low of 9:15–9:30. A stock is listed when a 5-minute bar *closes* above that range. **holding** means it is still above the range now. **BACK INSIDE the range** means the breakout failed, so skip it. `beyond%` is how far past the range the first close was (tiny means a weak break), and `rvol` is volume compared with a normal day (above 1.5 is unusual interest).
+
+**2. "Is it time to buy TESTCO?"**
+
+```
+TESTCO long ORB @ 09:41: TRIGGERED - first 5-minute close above the range at 09:35
+  range 1704.78 - 1707.31, last 1718.72 (09:35 bar)
+  trigger close 1707.63 at 09:35
+```
+
+The answer is one of **waiting**, **triggered** or **expired**. Expired means the price has run more than 1% past the trigger, and Claude will tell you not to chase it.
+
+**3. "Plan the stop and target."**
+
+```
+TESTCO LONG plan
+  entry     1718.72
+  stop      1704.70  (or-low, 14.02/share at risk)
+  target    1753.70  (2.5R, 34.98/share)
+  flat by 15:10 IST either way
+  reward:risk 2.5 gross, 2.09 after ~1.83/share charges
+```
+
+**4. "What are the odds?"**
+
+```
+Time Machine: TESTCO long from 1718.72 (stop 1704.7, target 1753.7, flat by 15:10)
+  10,000 replays of the remaining 67 candles, drawn from 59 past sessions (seed 42):
+    today is moving at 0.68x its normal pace for this time of day; replayed candles are scaled to match
+    target first 7.5%, stop first 11.1%, still open at flat-by 81.4%
+    average result +8.84/share after ~1.83/share charges = +0.63R
+  History: the same rule fired on 54 of 59 past sessions: 19 target, 26 stop, 9 neither; average +0.27R net
+  Verdict: positive on paper, but 60 sessions is a small sample and the future need not repeat them.
+```
+
+It replays the rest of today thousands of times using the stock's own recent candles, scaled to today's pace. If the verdict is negative after charges, it says "skip it", and skipping is a perfectly good result.
+
+**5. "How many shares?"** (with ₹1,00,000 capital and ₹500 maximum loss)
+
+```
+Buy 28 TESTCO MIS LIMIT at 1720.5 = ₹48,174.00 (margin ₹48,174.00)
+  stop 1704.7: lose about ₹493.32
+  target 1753.7: make about ₹877.80 after ₹51.80 charges
+  net reward:risk 1.78; flat by 15:10
+```
+
+**6. "Is this trade allowed?"**
+
+```
+TESTCO-20261102-0941: PASS
+  [  ok  ] max loss per trade: ₹493.32 at the stop vs limit ₹500.00
+  [  ok  ] daily loss limit: worst case -₹493.32 vs limit -₹1,500.00
+  [  ok  ] trades per day: 0 taken today, max 3
+  [  ok  ] reward to risk (net): 1.78 vs minimum 1.5
+  [  ok  ] entry window: now 09:41, window 09:30-14:30
+  [  ok  ] SEBI insider guard: not on your insider list
+  [  ok  ] market open today: trading day
+  [  ok  ] circuit band: 20.0% band; minimum 10%
+  ... and the other checks
+```
+
+If any rule fails, the answer is **BLOCK**, with the reason, and the order cannot go further.
+
+**7. "Place it."** Claude shows the order in plain words and waits. On paper (the default) it records the trade in a practice ledger. For a real order you must have switched paper trading off, and you type yes for that exact order.
+
+**8. "What did it cost?"**
+
+```
+Buy 28 at 1718.72, sell at 1753.7 (discount brokerage):
+  Brokerage                   ₹29.17
+  STT (0.025% sell)           ₹12.28
+  NSE transaction              ₹2.89
+  Stamp duty (buy)             ₹1.44
+  GST 18%                      ₹5.81
+  Total charges               ₹51.78
+  Gross P&L                  ₹979.44
+  Net P&L                    ₹927.66
+```
+
+**9. "How am I doing?"** After a few weeks of trades, the journal shows your win rate, average win and loss in rupees, charges paid, your worst losing streak, and whether your record is good enough to consider real money.
 
 ---
 
@@ -224,7 +326,7 @@ python3 skills/india-deals/deals.py bulk | block | insider
 python3 skills/india-journal/journal.py
 ```
 
-- Offline tests (40, on made-up data): `python3 -m unittest discover -s tests -v`
+- Offline tests (43, on made-up data): `python3 -m unittest discover -s tests -v`
 - Check every live data source: `python3 tests/live_check.py RELIANCE`
 - Replay a past moment: set `IMT_NOW=2026-11-02T10:15` (and `IMT_DIR=trader-replay` to keep it separate).
 - Data sources: Yahoo Finance (`.NS`), NSE archives and website, Google News India, Reddit.
