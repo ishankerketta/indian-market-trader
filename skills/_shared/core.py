@@ -10,6 +10,13 @@ import os
 import sys
 from pathlib import Path
 
+# Windows consoles often use a legacy encoding that cannot print the rupee sign.
+for _stream in (sys.stdout, sys.stderr):
+    try:
+        _stream.reconfigure(encoding="utf-8", errors="replace")
+    except (AttributeError, ValueError):
+        pass
+
 IST = dt.timezone(dt.timedelta(hours=5, minutes=30), "IST")
 
 MARKET_OPEN = dt.time(9, 15)

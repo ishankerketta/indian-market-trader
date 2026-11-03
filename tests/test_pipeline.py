@@ -157,7 +157,7 @@ class Pipeline(unittest.TestCase):
         uni = self.state_json("universe.json")
         self.assertEqual({s["symbol"] for s in uni["symbols"]}, {"TESTCO", "FLATCO", "T2TCO"})
 
-        self.run_tool("india-scanner/scan.py", "daily", "--symbols", "TESTCO,FLATCO")
+        self.run_tool("india-scanner/scan.py", "daily", "--symbols", "TESTCO,FLATCO", "--save-watchlist")
         self.assertTrue(self.state_json("watchlist.json")["symbols"])
 
         out = self.run_tool("india-scanner/scan.py", "orb", "--symbols", "TESTCO,FLATCO").stdout
@@ -224,6 +224,20 @@ class Pipeline(unittest.TestCase):
         out = self.run_tool("india-alerts/alerts.py", "check", when="2026-11-02T15:20").stdout
         self.assertIn("RING", out)
         self.assertEqual(self.state_json("risk.json")["orders"][0]["verdict"], "PASS")
+
+    def test_symbols_run_keeps_watchlist_and_dummy_skipped(self):
+        self.run_tool("india-scanner/scan.py", "universe")
+        self.run_tool("india-scanner/scan.py", "daily", "--symbols", "TESTCO,FLATCO", "--save-watchlist")
+        saved = self.state_json("watchlist.json")["symbols"]
+        p = self.run_tool("india-scanner/scan.py", "daily", "--symbols", "FLATCO")
+        self.assertIn("Watchlist not changed", p.stdout)
+        self.assertEqual(self.state_json("watchlist.json")["symbols"], saved)
+        import importlib.util
+        spec = importlib.util.spec_from_file_location("scan", SK / "india-scanner" / "scan.py")
+        sys.path.insert(0, str(SK / "_shared"))
+        scan = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(scan)
+        self.assertTrue(callable(scan.pick_symbols))
 
     def test_daily_bars_patched_from_intraday(self):
         import data

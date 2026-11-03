@@ -2,7 +2,8 @@
 """Chart Scanner: scan NSE stocks for intraday setups.
 
   scan.py universe [--source nifty500|nifty100|all]   build trader/universe.json
-  scan.py daily [--top 25] [--symbols A,B]             end-of-day / pre-market setups -> watchlist
+  scan.py daily [--top 25] [--symbols A,B] [--save-watchlist]   end-of-day / pre-market setups -> watchlist
+                                                       (--symbols leaves the saved watchlist alone unless --save-watchlist)
   scan.py orb [--at HH:MM] [--side long|short|both]    opening-range breakouts so far today
 """
 import argparse
@@ -31,21 +32,28 @@ def pick_symbols(args, cfg, prefer_watchlist=False):
             return wl["symbols"]
     uni = load_universe(cfg["universe"])
     allowed = set(cfg["allow_series"])
-    return [s["symbol"] for s in uni["symbols"] if s.get("series", "EQ") in allowed]
+    return [s["symbol"] for s in uni["symbols"]
+            if s.get("series", "EQ") in allowed and not s["symbol"].upper().startswith("DUMMY")]
 
 
 def run_pool(fn, symbols):
     results, errors = [], []
+    show = sys.stderr.isatty() and len(symbols) > 30
     with ThreadPoolExecutor(max_workers=WORKERS) as ex:
         futs = {ex.submit(fn, s): s for s in symbols}
-        for f in as_completed(futs):
+        for i, f in enumerate(as_completed(futs), 1):
             s = futs[f]
+            if show and (i % 10 == 0 or i == len(symbols)):
+                sys.stderr.write(f"\r  checked {i}/{len(symbols)} stocks...")
+                sys.stderr.flush()
             try:
                 r = f.result()
                 if r:
                     results.append(r)
             except (DataError, ValueError, KeyError, IndexError, ZeroDivisionError) as e:
                 errors.append(f"{s}: {e}")
+    if show:
+        sys.stderr.write("\r" + " " * 40 + "\r")
     return results, errors
 
 
@@ -106,14 +114,18 @@ def cmd_daily(args, cfg):
     out = {"mode": "daily", "time": now().isoformat(timespec="minutes"), "scanned": len(syms),
            "matched": len(res), "errors": len(errs), "candidates": top}
     write_state("scan_daily.json", out)
-    write_state("watchlist.json", {"time": out["time"], "source": "scan daily",
-                                   "symbols": [r["symbol"] for r in top]})
+    if not args.symbols or args.save_watchlist:
+        write_state("watchlist.json", {"time": out["time"], "source": "scan daily",
+                                       "symbols": [r["symbol"] for r in top]})
     print(f"Scanned {len(syms)} stocks, {len(res)} with setups ({len(errs)} fetch errors). Top {len(top)}:")
     print(f"{'symbol':<14}{'close':>10}{'chg%':>7}{'gap%':>7}{'rsi':>6}{'vol x':>7}{'turn Cr':>9}  setups")
     for r in top:
         print(f"{r['symbol']:<14}{r['close']:>10.2f}{r['change_pct']:>7.2f}{r['gap_pct']:>7.2f}"
               f"{(r['rsi'] or 0):>6.1f}{r['vol_ratio']:>7.2f}{r['turnover_cr']:>9.1f}  {', '.join(r['setups'])}")
-    print("Watchlist saved to trader/watchlist.json for the ORB scan.")
+    if args.symbols and not args.save_watchlist:
+        print("Watchlist not changed (you gave --symbols). Add --save-watchlist to replace it, or run `scan.py daily` with no symbols to rebuild it.")
+    else:
+        print("Watchlist saved to trader/watchlist.json for the ORB scan.")
     report_errors(errs, args.verbose)
 
 
@@ -197,6 +209,7 @@ def main():
     d = sub.add_parser("daily")
     d.add_argument("--top", type=int, default=25)
     d.add_argument("--symbols")
+    d.add_argument("--save-watchlist", action="store_true", help="with --symbols: replace the saved watchlist")
     d.add_argument("-v", "--verbose", action="store_true")
     o = sub.add_parser("orb")
     o.add_argument("--at", help="HH:MM IST (default: now)")
