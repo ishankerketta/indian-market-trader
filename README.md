@@ -24,39 +24,80 @@ It practises with pretend money (paper trading) by default. **It never places a 
 
 ## Get started
 
-**1. Install Python** (version 3.8 or newer) from [python.org](https://www.python.org/downloads/).
-On Windows, tick **"Add Python to PATH"** during setup.
+Three steps: install Python, add the skills to Claude (or ChatGPT), then ask a question.
 
-**2. Install the skills.** In [Claude Code](https://claude.com/claude-code), type:
+### Step 1: Install Python (free, one time)
 
-```
-/plugin marketplace add ishankerketta/indian-market-trader
-/plugin install indian-market-trader@indian-market-trader
-```
+**Mac**
+1. Download Python from [python.org/downloads](https://www.python.org/downloads/) and open the installer.
+2. When it finishes, open **Applications → Python 3.x** and double-click **Install Certificates.command**. (Without this, the market data downloads fail.)
 
-**3. Ask.** For example:
+**Windows**
+1. Download Python from [python.org/downloads](https://www.python.org/downloads/) and open the installer.
+2. On the first screen, tick **"Add python.exe to PATH"**, then click **Install Now**.
+3. Check it worked: open **PowerShell** (Start menu → type "PowerShell") and type `py --version`. You should see a version number.
+
+### Step 2: Add the skills
+
+Pick one:
+
+| Where | How easy | What works |
+|---|---|---|
+| **A. Claude Code** (recommended) | Easy, a few commands | Everything, including your broker |
+| **B. Claude app** (claude.ai or desktop) | Easiest, no commands | Analysis and paper trading. No broker connection |
+| **C. ChatGPT or Codex** | Easy | Should work, not tested yet |
+
+#### A. Claude Code (recommended)
+
+Claude Code needs a paid Claude plan (Pro, Max, Team or Enterprise).
+
+1. **Install Claude Code.**
+   - **Mac:** open **Terminal** (Applications → Utilities → Terminal) and paste:
+     ```
+     curl -fsSL https://claude.ai/install.sh | bash
+     ```
+   - **Windows:** open **PowerShell** and paste:
+     ```
+     irm https://claude.ai/install.ps1 | iex
+     ```
+2. **Start it.** Close the window, open a new Terminal (Mac) or PowerShell (Windows), type `claude` and press Enter. The first time, it opens your browser to log in.
+3. **Add the skills.** Inside Claude Code, paste these two lines, one at a time:
+   ```
+   /plugin marketplace add ishankerketta/indian-market-trader
+   /plugin install indian-market-trader@indian-market-trader
+   ```
+4. **Done.** Ask your first question (see Step 3).
+
+#### B. Claude app (claude.ai, or the desktop app)
+
+1. **Download the skills:** go to the [latest release](https://github.com/ishankerketta/indian-market-trader/releases/latest) and download the ZIP files. Start with `india-pulse.zip`, `india-scanner.zip`, `india-levels.zip` and `india-charges.zip`, and add more later.
+2. **Allow the data:** in Claude, go to **Settings → Capabilities**. Turn on **code execution**, and allow network access to these sites (or to all sites):
+   `query1.finance.yahoo.com`, `www.nseindia.com`, `nsearchives.nseindia.com`, `archives.nseindia.com`, `niftyindices.com`, `news.google.com`, `www.reddit.com`
+3. **Upload:** go to **Customize → Skills → + → Upload a skill**, and pick a ZIP (don't unzip it). Repeat for each one.
+
+Broker connections need your own computer, so they don't work in the app. Use option A for those.
+
+#### C. ChatGPT or Codex (not tested yet)
+
+The skills use the open `SKILL.md` format, which OpenAI also supports.
+
+- **ChatGPT app** (paid plans): download the ZIPs as in option B, then open **Skills** (in the sidebar or under Plugins) → **Create → Upload from your computer**, and pick a ZIP. ChatGPT may block the market-data downloads. If you see network errors, use Codex or Claude Code instead.
+- **Codex** (OpenAI's coding agent): download this project (green **Code** button → **Download ZIP**) and unzip it. Then copy the `skills` folder's contents into your Codex skills folder:
+  - **Mac:** `mkdir -p ~/.agents/skills && cp -r skills/* ~/.agents/skills/`
+  - **Windows (PowerShell):** `New-Item -ItemType Directory -Force $HOME\.agents\skills; Copy-Item -Recurse skills\* $HOME\.agents\skills\`
+
+If you try it, please [tell us](https://github.com/ishankerketta/indian-market-trader/issues) whether it worked.
+
+### Step 3: Ask
+
+Type in plain English, Hindi or Hinglish:
 
 - "How's the market looking today?"
 - "Find breakouts after 9:30"
 - "Show me the levels for TCS"
 - "Plan a trade in RELIANCE with ₹500 maximum loss"
 
-The first time you plan a trade, Claude asks for your capital, your loss limits and your broker, and saves them.
-
-<details>
-<summary>Other ways to install (Claude app, ChatGPT, manual copy)</summary>
-
-- **Claude app (web or desktop):** run `python3 tools/build_app_zips.py`, then upload each ZIP from the `dist` folder under *Customize → Skills → Upload a skill*. Turn code execution on, and allow Yahoo, NSE, Google News and Reddit in your settings, or the app will block the data.
-- **ChatGPT and Codex:** the skills use the open `SKILL.md` format, which OpenAI also supports. Codex on your own computer is the best fit. In the ChatGPT app, data downloads may be blocked. Not tested yet.
-- **Manual copy:**
-  ```
-  git clone https://github.com/ishankerketta/indian-market-trader.git
-  cp -r indian-market-trader/skills/* ~/.claude/skills/
-  ```
-
-</details>
-
-**On Windows,** type `py` wherever this page says `python3`, and use PowerShell.
+The first time you plan a trade, Claude asks for your capital, your loss limits and your broker, and saves them. Everything starts in **paper trading** (pretend money).
 
 ---
 
@@ -106,19 +147,26 @@ The first time you plan a trade, Claude asks for your capital, your loss limits 
 | **Groww** | Yes, not tested yet | Yes, buy orders; sells need DDPI |
 | **About 40 more** | Through [OpenAlgo](https://github.com/marketcalls/openalgo) | |
 
-**You log in yourself, in your own terminal.** Your password and keys never go into the chat:
+This needs option A (Claude Code) on your own computer.
 
-```
-python3 skills/india-broker/connect.py login angelone
-```
+**1. Get the project folder** (one time): on this page, click the green **Code** button → **Download ZIP**, and unzip it. Then open a terminal in that folder:
+  - **Mac:** open Terminal, type `cd ` (with a space), drag the unzipped folder into the Terminal window, and press Enter.
+  - **Windows:** open the unzipped folder in File Explorer, click the address bar, type `powershell`, and press Enter.
 
-Use `dhan`, `zerodha`, `upstox`, `fyers` or `groww` instead of `angelone` for other brokers. The login asks for what your broker needs. For Angel One, that's an API key from [smartapi.angelone.in](https://smartapi.angelone.in), your client code, your PIN, and a 6-digit code from an authenticator app. You log in again each trading day.
+**2. Log in yourself.** Your password and keys never go into the chat:
 
-Check that it worked (this only reads, it can't trade):
+- **Mac:** `python3 skills/india-broker/connect.py login angelone`
+- **Windows:** `py skills\india-broker\connect.py login angelone`
 
-```
-python3 skills/india-broker/connect.py positions angelone
-```
+Use `dhan`, `zerodha`, `upstox`, `fyers` or `groww` instead of `angelone` for other brokers. It asks for what your broker needs, and nothing shows on screen while you type secrets. You log in again each trading day.
+
+- **Angel One:** an API key from [smartapi.angelone.in](https://smartapi.angelone.in) (Add App), your client code, your PIN, and the 6-digit code from an authenticator app (set it up under Enable TOTP on the same site).
+- **Dhan:** your Client ID and an access token from web.dhan.co → My Profile → DhanHQ Trading APIs.
+
+**3. Check it worked** (this only reads, it can't trade):
+
+- **Mac:** `python3 skills/india-broker/connect.py positions angelone`
+- **Windows:** `py skills\india-broker\connect.py positions angelone`
 
 **Static IP for real orders.** Since April 2026, SEBI rules say brokers accept API orders only from an internet address (IP) you've registered with them. Viewing your account works from anywhere. Ask your internet provider for a static IP, or use a small cloud server.
 
