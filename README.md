@@ -6,7 +6,7 @@ You ask Claude a question in plain English, Hindi or Hinglish, like *"aaj market
 
 It practises with pretend money (paper trading) by default. **It never places a real order unless you say yes.**
 
-> **Beta.** Tested on live NSE data on a Mac. Angel One login works on a real account. Placing real orders, the other brokers, and Windows are not tested yet. Start with pretend money. Not investment advice: see [Please read](#please-read).
+> **Beta.** Checked on live NSE data from a Mac: the market pulse, the daily scan and data sources. The opening-range (ORB) scan had a bug on live data that is fixed in v0.3.8 and is being re-checked live. Angel One login works on a real account. Placing real orders, the other brokers, and Windows are not tested yet. Start with pretend money. Not investment advice: see [Please read](#please-read).
 
 ---
 
