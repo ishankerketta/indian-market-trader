@@ -8,7 +8,7 @@ You ask Claude a question in plain English, Hindi or Hinglish, like *"aaj market
 
 It practises with pretend money (paper trading) by default. **It never places a real order unless you say yes.**
 
-> **Beta.** Checked live on real NSE data from a Mac: the market pulse, the daily and opening-range scans, entry check, exit plan and the Time Machine. Angel One login works on a real account. Placing real orders, the other brokers, and Windows are not tested yet. Start with pretend money. Not investment advice: see [Please read](#please-read).
+> **Beta.** Checked live on real NSE data from a Mac: the market pulse, the daily and opening-range scans, entry check, exit plan and the Time Machine. Angel One and Dhan logins work on real accounts, and reading positions and orders works. Placing real orders, the other brokers, and Windows are not tested yet. Start with pretend money. Not investment advice: see [Please read](#please-read).
 
 ---
 
@@ -257,8 +257,8 @@ Buy 28 at 1718.72, sell at 1753.7 (discount brokerage):
 
 | Broker | Works with this pack | Also has its own Claude connector |
 |---|---|---|
-| **Angel One** | Yes, login tested | No |
-| **Dhan** | Yes, not tested yet | Yes, can place orders |
+| **Angel One** | Yes, login and reading tested | No |
+| **Dhan** | Yes, login and reading tested | Yes, can place orders |
 | **Zerodha** | Yes, not tested yet | Yes, GTT orders only |
 | **Upstox** | Yes, not tested yet | Yes, view only |
 | **FYERS** | Yes, not tested yet | Yes |
@@ -279,7 +279,7 @@ This needs option A (Claude Code) on your own computer.
 Use `dhan`, `zerodha`, `upstox`, `fyers` or `groww` instead of `angelone` for other brokers. It asks for what your broker needs, and nothing shows on screen while you type secrets. You log in again each trading day.
 
 - **Angel One:** an API key from [smartapi.angelone.in](https://smartapi.angelone.in) (Add App), your client code, your PIN, and the 6-digit code from an authenticator app (set it up under Enable TOTP on the same site).
-- **Dhan:** your Client ID and an access token from web.dhan.co → My Profile → DhanHQ Trading APIs.
+- **Dhan:** your Client ID and an access token. On web.dhan.co go to My Profile → DhanHQ Trading APIs, switch on the free **Trading APIs** plan (₹0), then open **Generate Access Token**, give it any name and keep the 24-hour validity. The token works like a password: only paste it into the Terminal prompt.
 
 **3. Check it worked** (this only reads, it can't trade):
 
